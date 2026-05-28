@@ -137,7 +137,7 @@ class SPCRateGraphCanvas(QWidget):
                 label,
             )
 
-        for i in range(len(RATES)):
+        for i in range(min(len(RATES), len(self._values))):
             color = COLORS[i]
             prop = list(self._values.keys())[i]
             values = self._values[prop]
