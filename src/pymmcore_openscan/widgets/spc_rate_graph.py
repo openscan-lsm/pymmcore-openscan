@@ -1,7 +1,7 @@
 from math import log10
 from typing import Any, cast
 
-from pymmcore_plus import CMMCorePlus, DeviceProperty
+from pymmcore_plus import CMMCorePlus, Device, DeviceProperty
 from qtpy.QtCore import QPointF, QRectF, Qt, QTimer
 from qtpy.QtGui import QColor, QPainter, QPaintEvent, QPalette, QPen
 from qtpy.QtWidgets import (
@@ -73,18 +73,19 @@ class SPCRateGraphCanvas(QWidget):
 
         self._values: dict[DeviceProperty, list[float]] = {}
 
+        self._dev: Device | None = None
         self._try_enable(self._mmcore)
 
     def _try_enable(self, mmcore: CMMCorePlus) -> None:
-        self._prop = None
+        self._dev = None
         self._values.clear()
 
         if "OSc-LSM" in mmcore.getLoadedDevices():
-            dev = mmcore.getDeviceObject("OSc-LSM")
+            self._dev = mmcore.getDeviceObject("OSc-LSM")
             for rate in RATES:
                 name = f"BH-TCSPC-RateCounter-{rate}"
-                if name in dev.propertyNames():
-                    self._values[dev.getPropertyObject(name)] = []
+                if name in self._dev.propertyNames():
+                    self._values[self._dev.getPropertyObject(name)] = []
 
     def paintEvent(self, event: QPaintEvent) -> None:
         """Paint the graph."""
@@ -137,6 +138,9 @@ class SPCRateGraphCanvas(QWidget):
                 label,
             )
 
+        if self._dev is None:
+            # Don't paint anything more if we don't have a device loaded
+            return
         for i in range(len(RATES)):
             color = COLORS[i]
             prop = list(self._values.keys())[i]
