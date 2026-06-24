@@ -15,6 +15,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from pymmcore_openscan._settings import Settings
+
 MAX_POWER = 8
 
 RATES = [
@@ -69,15 +71,21 @@ class SPCRateGraphCanvas(QWidget):
         self.margin_top = 10
         self.margin_bottom = 30
 
-        self._num_x_ticks = 5
+        self._x_range = Settings.instance().spc_graph_time
         self._sample_interval = 100  # ms
+        self._num_x_ticks = 6
         self._num_y_ticks = 8
 
+        # The newest value is at index 0
         self._values: dict[DeviceProperty, list[float]] = {}
-        self._max_values = 10
 
         self._dev: Device | None = None
         self._try_enable(self._mmcore)
+
+    @property
+    def _max_values(self) -> int:
+        """The number of samples per value that can fit on the graph."""
+        return int(self._x_range * 1000 / self._sample_interval) + 1
 
     def _try_enable(self, mmcore: CMMCorePlus) -> None:
         self._dev = None
@@ -123,10 +131,12 @@ class SPCRateGraphCanvas(QWidget):
         painter.setPen(QPen(text_color, 2))
         painter.drawLine(
             QPointF(plot_right, plot_top), QPointF(plot_right, plot_bottom)
-        )  # Y-axis
+        )
+        painter.drawLine(QPointF(plot_left, plot_top), QPointF(plot_left, plot_bottom))
         painter.drawLine(
             QPointF(plot_left, plot_bottom), QPointF(plot_right, plot_bottom)
-        )  # X-axis
+        )
+        painter.drawLine(QPointF(plot_left, plot_top), QPointF(plot_right, plot_top))
 
         # Draw X-axis labels
         painter.setPen(text_color)
@@ -135,9 +145,9 @@ class SPCRateGraphCanvas(QWidget):
         painter.setFont(font)
 
         for i in range(self._num_x_ticks):
-            secs = -(self._num_x_ticks - 1 - i) * self._sample_interval / 1000
+            secs = i / (self._num_x_ticks - 1) * self._x_range
             label = f"{secs:g}"
-            x = plot_left + plot_width * i / (self._num_x_ticks - 1)
+            x = self._x(i / (self._num_x_ticks - 1))
             painter.drawText(
                 QRectF(x - 20, plot_bottom + 1, 40, 13),
                 Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
@@ -158,11 +168,11 @@ class SPCRateGraphCanvas(QWidget):
         for i in range(self._num_y_ticks):
             label = "10" if i == 0 else "100" if i == 1 else f"1e{i + 1}"
             y = self._y(10 ** (i + 1))
-            # Draw label to the left of the axis
-            text_rect = QRectF(plot_right + 5, y - 10, self.margin_right - 5, 20)
+            # Draw label to the right of the axis
+            text_rect = QRectF(plot_right, y - 10, self.margin_right, 20)
             painter.drawText(
                 text_rect,
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter,
                 label,
             )
 
@@ -253,7 +263,7 @@ class SPCRateGraph(QWidget):
         layout.addLayout(spinboxes_layout)
 
         t = QTimer(self)
-        t.setInterval(self._canvas.sample_interval)
+        t.setInterval(self._canvas._sample_interval)
         t.timeout.connect(self._pollRates)
         t.start()
 

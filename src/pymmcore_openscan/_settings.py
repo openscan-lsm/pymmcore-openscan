@@ -144,6 +144,8 @@ class Settings(BaseSettings):
     """Labels for DCC/DCU unit connectors."""
     bh_dcc_dcu_connector_visibility: dict[str, dict[int, bool]] = {}
     """Visibility for DCC/DCU unit connectors."""
+    spc_graph_time: int = 1
+    """The number of seconds displayed on the SPC Rate Graph"""
 
     @classmethod
     def instance(cls) -> Settings:
