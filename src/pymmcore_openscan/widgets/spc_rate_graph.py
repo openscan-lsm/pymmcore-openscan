@@ -64,14 +64,17 @@ class SPCRateGraphCanvas(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Margins in pixels
-        self.margin_left = 30
-        self.margin_right = 10
+        self.margin_left = 10
+        self.margin_right = 30
         self.margin_top = 10
-        self.margin_bottom = 10
+        self.margin_bottom = 30
 
-        self._n_ticks = 8
+        self._num_x_ticks = 5
+        self._sample_interval = 100  # ms
+        self._num_y_ticks = 8
 
         self._values: dict[DeviceProperty, list[float]] = {}
+        self._max_values = 10
 
         self._dev: Device | None = None
         self._try_enable(self._mmcore)
@@ -105,21 +108,46 @@ class SPCRateGraphCanvas(QWidget):
         plot_top = self.margin_top
         plot_bottom = height - self.margin_bottom
         plot_height = plot_bottom - plot_top
+        plot_width = plot_right - plot_left
 
         # Draw grid lines
         painter.setPen(QPen(mid_color, 1))
-        for i in range(self._n_ticks):
-            y = plot_top + plot_height * i / (self._n_ticks - 1)
+        for i in range(self._num_y_ticks):
+            y = plot_top + plot_height * i / (self._num_y_ticks - 1)
             painter.drawLine(QPointF(plot_left, y), QPointF(plot_right, y))
+        for i in range(self._num_x_ticks):
+            x = plot_left + plot_width * i / (self._num_x_ticks - 1)
+            painter.drawLine(QPointF(x, plot_top), QPointF(x, plot_bottom))
 
         # Draw axes
         painter.setPen(QPen(text_color, 2))
         painter.drawLine(
-            QPointF(plot_left, plot_top), QPointF(plot_left, plot_bottom)
+            QPointF(plot_right, plot_top), QPointF(plot_right, plot_bottom)
         )  # Y-axis
         painter.drawLine(
             QPointF(plot_left, plot_bottom), QPointF(plot_right, plot_bottom)
         )  # X-axis
+
+        # Draw X-axis labels
+        painter.setPen(text_color)
+        font = painter.font()
+        font.setPointSize(9)
+        painter.setFont(font)
+
+        for i in range(self._num_x_ticks):
+            secs = -(self._num_x_ticks - 1 - i) * self._sample_interval / 1000
+            label = f"{secs:g}"
+            x = plot_left + plot_width * i / (self._num_x_ticks - 1)
+            painter.drawText(
+                QRectF(x - 20, plot_bottom + 1, 40, 13),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
+                label,
+            )
+        painter.drawText(
+            QRectF(plot_left, plot_bottom + 15, plot_width, 14),
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
+            "time (seconds)",
+        )
 
         # Draw Y-axis labels
         painter.setPen(text_color)
@@ -127,11 +155,11 @@ class SPCRateGraphCanvas(QWidget):
         font.setPointSize(9)
         painter.setFont(font)
 
-        for i in range(self._n_ticks):
+        for i in range(self._num_y_ticks):
             label = "10" if i == 0 else "100" if i == 1 else f"1e{i + 1}"
             y = self._y(10 ** (i + 1))
             # Draw label to the left of the axis
-            text_rect = QRectF(0, y - 10, self.margin_left - 5, 20)
+            text_rect = QRectF(plot_right + 5, y - 10, self.margin_right - 5, 20)
             painter.drawText(
                 text_rect,
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
@@ -153,18 +181,17 @@ class SPCRateGraphCanvas(QWidget):
 
             # Draw lines between points
             for j in range(1, len(values)):
-                x1 = self._x(j - 1)
+                x1 = self._x((j - 1) / (self._max_values - 1))
                 y1 = self._y(values[j - 1])
-                x2 = self._x(j)
+                x2 = self._x(j / (self._max_values - 1))
                 y2 = self._y(values[j])
                 painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
     def _x(self, value: float) -> int:
-        """Convert a rate value to a x coordinate."""
+        """Convert a value [0, 1] to a x coordinate on the plot."""
         plot_left = self.margin_left
         plot_right = self.width() - self.margin_right
-        a = value / 9
-        return int(plot_left * (1 - a) + plot_right * a)
+        return int(plot_left * (value) + plot_right * (1 - value))
 
     def _y(self, value: float) -> int:
         """Convert a rate value to a y coordinate."""
@@ -185,9 +212,9 @@ class SPCRateGraphCanvas(QWidget):
     def update_data(self) -> None:
         """Update data and trigger repaint."""
         for prop, values in self._values.items():
-            if len(values) >= 10:
-                values.pop(0)
-            values.append(prop.value)
+            if len(values) >= self._max_values:
+                values.pop()
+            values.insert(0, prop.value)
         self.update()
 
 
@@ -226,7 +253,7 @@ class SPCRateGraph(QWidget):
         layout.addLayout(spinboxes_layout)
 
         t = QTimer(self)
-        t.setInterval(100)
+        t.setInterval(self._canvas.sample_interval)
         t.timeout.connect(self._pollRates)
         t.start()
 
