@@ -1,41 +1,27 @@
+from dataclasses import dataclass, field
 from math import log10
 from typing import Any, cast
 
 from pymmcore_plus import CMMCorePlus, Device, DeviceProperty
-from qtpy.QtCore import QPointF, QRectF, Qt, QTimer
-from qtpy.QtGui import QColor, QPainter, QPaintEvent, QPalette, QPen
+from qtpy.QtCore import QPoint, QPointF, QRectF, Qt, QTimer
+from qtpy.QtGui import QColor, QIcon, QPainter, QPaintEvent, QPalette, QPen, QPixmap
 from qtpy.QtWidgets import (
     QAbstractSpinBox,
+    QAction,
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
+    QWidgetAction,
 )
 
 from pymmcore_openscan._settings import Settings
 
 MAX_POWER = 8
-
-RATES = [
-    "Sync",
-    "CFD",
-    "TAC",
-    "ADC",
-]
-
-# Rate colors chosen for:
-# 1) Good contrast with both light and dark themes
-# 2) Colorblind accessibility (tested against protanopia, deuteranopia, tritanopia)
-#    https://davidmathlogic.com/colorblind/#%23D81B60-%23FFC107-%231E88E5-%2376AB10
-COLORS = [
-    QColor(216, 27, 96),  # Red
-    QColor(255, 193, 7),  # Yellow
-    QColor(30, 136, 229),  # Blue
-    QColor(118, 171, 16),  # Green
-]
 
 
 class _StandardFormSpinBox(QDoubleSpinBox):
@@ -55,11 +41,27 @@ class _StandardFormSpinBox(QDoubleSpinBox):
         return f"{prefix:.2f}E{base}"
 
 
+@dataclass
+class Rate:
+    """SPC rate state."""
+
+    text: str
+    color: QColor
+    visible: bool = True
+    samples: list[float] = field(default_factory=list)
+    prop: DeviceProperty | None = None
+    spinbox: _StandardFormSpinBox = field(default_factory=_StandardFormSpinBox)
+
+
 class SPCRateGraphCanvas(QWidget):
     """Canvas widget displaying an x-y rate graph."""
 
     def __init__(
-        self, *, parent: QWidget | None = None, mmcore: CMMCorePlus | None = None
+        self,
+        *,
+        parent: QWidget | None = None,
+        mmcore: CMMCorePlus | None = None,
+        rates: list[Rate],
     ) -> None:
         super().__init__(parent=parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
@@ -71,32 +73,34 @@ class SPCRateGraphCanvas(QWidget):
         self.margin_top = 10
         self.margin_bottom = 30
 
-        self._x_range = Settings.instance().spc_graph_time
         self._sample_interval = 100  # ms
         self._num_x_ticks = 6
-        self._num_y_ticks = 8
+        self._num_y_ticks = MAX_POWER
 
-        # The newest value is at index 0
-        self._values: dict[DeviceProperty, list[float]] = {}
-
+        self._rates = rates
         self._dev: Device | None = None
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
         self._try_enable(self._mmcore)
 
     @property
     def _max_values(self) -> int:
         """The number of samples per value that can fit on the graph."""
-        return int(self._x_range * 1000 / self._sample_interval) + 1
+        span = Settings.instance().spc_graph_span
+        return int(span * 1000 / self._sample_interval) + 1
 
     def _try_enable(self, mmcore: CMMCorePlus) -> None:
         self._dev = None
-        self._values.clear()
+        for rate in self._rates:
+            rate.prop = None
+            rate.samples.clear()
 
         if "OSc-LSM" in mmcore.getLoadedDevices():
             self._dev = mmcore.getDeviceObject("OSc-LSM")
-            for rate in RATES:
-                name = f"BH-TCSPC-RateCounter-{rate}"
+            for rate in self._rates:
+                name = f"BH-TCSPC-RateCounter-{rate.text}"
                 if name in self._dev.propertyNames():
-                    self._values[self._dev.getPropertyObject(name)] = []
+                    rate.prop = self._dev.getPropertyObject(name)
 
     def paintEvent(self, event: QPaintEvent) -> None:
         """Paint the graph."""
@@ -145,7 +149,7 @@ class SPCRateGraphCanvas(QWidget):
         painter.setFont(font)
 
         for i in range(self._num_x_ticks):
-            secs = i / (self._num_x_ticks - 1) * self._x_range
+            secs = i / (self._num_x_ticks - 1) * Settings.instance().spc_graph_span
             label = f"{secs:g}"
             x = self._x(i / (self._num_x_ticks - 1))
             painter.drawText(
@@ -179,22 +183,18 @@ class SPCRateGraphCanvas(QWidget):
         if self._dev is None:
             # Don't paint anything more if we don't have a device loaded
             return
-        for i in range(len(RATES)):
-            color = COLORS[i]
-            prop = list(self._values.keys())[i]
-            values = self._values[prop]
-            if len(values) < 2:
+        for rate in self._rates:
+            if not rate.visible or rate.prop is None or len(rate.samples) < 2:
                 continue
 
-            pen = QPen(color, 3)
+            pen = QPen(rate.color, 3)
             painter.setPen(pen)
 
-            # Draw lines between points
-            for j in range(1, len(values)):
+            for j in range(1, len(rate.samples)):
                 x1 = self._x((j - 1) / (self._max_values - 1))
-                y1 = self._y(values[j - 1])
+                y1 = self._y(rate.samples[j - 1])
                 x2 = self._x(j / (self._max_values - 1))
-                y2 = self._y(values[j])
+                y2 = self._y(rate.samples[j])
                 painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
     def _x(self, value: float) -> int:
@@ -221,10 +221,60 @@ class SPCRateGraphCanvas(QWidget):
 
     def update_data(self) -> None:
         """Update data and trigger repaint."""
-        for prop, values in self._values.items():
-            if len(values) >= self._max_values:
-                values.pop()
-            values.insert(0, prop.value)
+        for rate in self._rates:
+            if rate.prop is None:
+                continue
+            if len(rate.samples) >= self._max_values:
+                rate.samples.pop()
+            rate.samples.insert(0, rate.prop.value)
+        self.update()
+
+    def _show_context_menu(self, pos: QPoint) -> None:
+        menu = QMenu(self)
+        # visibility toggles for each rate
+        for rate in self._rates:
+            action = QAction(rate.text, menu)
+            action.setCheckable(True)
+            action.setChecked(rate.visible)
+            pixmap = QPixmap(12, 12)
+            pixmap.fill(rate.color)
+            action.setIcon(QIcon(pixmap))
+            action.triggered.connect(lambda _, r=rate: self._toggle_rate(r))
+            menu.addAction(action)
+        menu.addSeparator()
+        # A spinbox to control the graph span
+        duration_action = QWidgetAction(menu)
+        container = QWidget(menu)
+        h_layout = QHBoxLayout(container)
+        h_layout.setContentsMargins(8, 4, 8, 4)
+        h_layout.addWidget(QLabel("Duration:"))
+        spinbox = QDoubleSpinBox(container)
+        spinbox.setRange(0.1, 600)
+        spinbox.setSuffix(" s")
+        spinbox.setDecimals(1)
+        spinbox.setValue(Settings.instance().spc_graph_span)
+        spinbox.editingFinished.connect(lambda: self._set_duration(spinbox.value()))
+        h_layout.addWidget(spinbox)
+        duration_action.setDefaultWidget(container)
+        menu.addAction(duration_action)
+        # run it
+        menu.exec(self.mapToGlobal(pos))
+
+    def _toggle_rate(self, rate: Rate) -> None:
+        rate.visible = not rate.visible
+        settings = Settings.instance()
+        settings.spc_rate_visibility[rate.text] = rate.visible
+        settings.flush()
+        self.update()
+
+    def _set_duration(self, secs: float) -> None:
+        settings = Settings.instance()
+        if secs == settings.spc_graph_span:
+            return
+        for rate in self._rates:
+            del rate.samples[self._max_values :]
+        settings.spc_graph_span = round(secs)
+        settings.flush()
         self.update()
 
 
@@ -239,23 +289,38 @@ class SPCRateGraph(QWidget):
         self.setMinimumWidth(300)
         self.setMinimumHeight(300)
 
-        self._canvas = SPCRateGraphCanvas(parent=self, mmcore=self._mmcore)
+        # Rate colors chosen for to be:
+        # 1) contrasting against light and dark themes
+        # 2) Colorblind-accessible (tested against protanopia, deuteranopia, tritanopia)
+        #    https://davidmathlogic.com/colorblind/#%23D81B60-%23FFC107-%231E88E5-%2376AB10
+        self._rates = [
+            Rate(text="Sync", color=QColor(216, 27, 96)),
+            Rate(text="CFD", color=QColor(255, 193, 7)),
+            Rate(text="TAC", color=QColor(30, 136, 229)),
+            Rate(text="ADC", color=QColor(118, 171, 16)),
+        ]
 
-        # Create spinboxes for each rate
-        self._spinboxes: dict[str, _StandardFormSpinBox] = {}
-        for rate in RATES:
-            self._spinboxes[rate] = _StandardFormSpinBox()
+        # Create a canvas to display the rate
+        self._canvas = SPCRateGraphCanvas(
+            parent=self, mmcore=self._mmcore, rates=self._rates
+        )
+
+        # Set initial visibility for each rate
+        settings = Settings.instance()
+        for rate in self._rates:
+            rate.visible = settings.spc_rate_visibility.get(rate.text, True)
 
         # Create horizontal layout for spinboxes
         spinboxes_layout = QHBoxLayout()
-        for i, rate in enumerate(RATES):
+        for rate in self._rates:
             rate_layout = QVBoxLayout()
-            label = QLabel(rate)
+            color = rate.color
+            label = QLabel(rate.text)
             label.setStyleSheet(
-                f"color: rgb({COLORS[i].red()}, {COLORS[i].green()}, {COLORS[i].blue()})"  # noqa: E501
+                f"color: rgb({color.red()}, {color.green()}, {color.blue()})"
             )
             rate_layout.addWidget(label)
-            rate_layout.addWidget(self._spinboxes[rate])
+            rate_layout.addWidget(rate.spinbox)
             spinboxes_layout.addLayout(rate_layout)
 
         layout = QVBoxLayout(self)
@@ -277,19 +342,15 @@ class SPCRateGraph(QWidget):
 
     def _update_spinbox_states(self) -> None:
         """Update spinbox enabled states based on available properties."""
-        for i, rate in enumerate(RATES):
-            if i < len(self._canvas._values):
-                self._spinboxes[rate].setEnabled(True)
-            else:
-                self._spinboxes[rate].setEnabled(False)
-                self._spinboxes[rate].clear()
+        for rate in self._rates:
+            enabled = rate.prop is not None
+            rate.spinbox.setEnabled(enabled)
+            if not enabled:
+                rate.spinbox.clear()
 
     def _pollRates(self) -> None:
         """Poll rates and update display."""
         self._canvas.update_data()
-        # Update spinbox values
-        for i, rate in enumerate(RATES):
-            if i < len(self._canvas._values):
-                props = list(self._canvas._values.keys())
-                if i < len(props):
-                    self._spinboxes[rate].setValue(props[i].value)
+        for rate in self._rates:
+            if rate.samples:
+                rate.spinbox.setValue(rate.samples[0])

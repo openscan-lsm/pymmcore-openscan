@@ -144,8 +144,10 @@ class Settings(BaseSettings):
     """Labels for DCC/DCU unit connectors."""
     bh_dcc_dcu_connector_visibility: dict[str, dict[int, bool]] = {}
     """Visibility for DCC/DCU unit connectors."""
-    spc_graph_time: int = 1
-    """The number of seconds displayed on the SPC Rate Graph"""
+    spc_graph_span: int = 1
+    """Time window (in seconds) shown on the SPC Rate Graph x-axis"""
+    spc_rate_visibility: dict[str, bool] = {}
+    """Visibility for individual SPC Graph Rates."""
 
     @classmethod
     def instance(cls) -> Settings:
