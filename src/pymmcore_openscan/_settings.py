@@ -144,6 +144,8 @@ class Settings(BaseSettings):
     """Labels for DCC/DCU unit connectors."""
     bh_dcc_dcu_connector_visibility: dict[str, dict[int, bool]] = {}
     """Visibility for DCC/DCU unit connectors."""
+    spectra_physics_wavelength_presets: list[int] = []
+    """Saved wavelength presets (nm) for the Spectra Physics Insight DS+ widget."""
 
     @classmethod
     def instance(cls) -> Settings:
