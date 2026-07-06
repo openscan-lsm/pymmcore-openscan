@@ -157,15 +157,24 @@ class SafetyButton(QPushButton):
 
 
 class _PollingWorker(QObject):
-    """Polls diode properties on a background thread."""
+    """Polls a configurable list of (device, property) pairs at a regular interval.
 
-    updated = Signal(int, float, float, float)  # diode_idx, current, temp, hours
+    Emits ``updated(device_name, property_name, value)`` for each pair on every tick.
+    """
 
-    def __init__(self, mmcore: CMMCorePlus) -> None:
+    updated = Signal(str, str, str)  # device_name, property_name, value
+
+    def __init__(
+        self,
+        mmcore: CMMCorePlus,
+        props: list[tuple[str, str]],
+        interval_ms: int = _POLL_INTERVAL_MS,
+    ) -> None:
         super().__init__()
         self._mmcore = mmcore
+        self._props = props
         self._timer = QTimer()
-        self._timer.setInterval(_POLL_INTERVAL_MS)
+        self._timer.setInterval(interval_ms)
         self._timer.timeout.connect(self._poll)
 
     def start(self) -> None:
@@ -175,16 +184,6 @@ class _PollingWorker(QObject):
         self._timer.stop()
 
     def _poll(self) -> None:
-        for i in range(1, 3):
-            current = float(
-                self._mmcore.getProperty(_DEVICE_NAME, f"Diode {i} Current")
-            )
-            temp = float(
-                self._mmcore.getProperty(
-                    _DEVICE_NAME, f"Diode {i} Temperature (Celsius)"
-                )
-            )
-            hours = float(
-                self._mmcore.getProperty(_DEVICE_NAME, f"Diode {i} Accumulated Hours")
-            )
-            self.updated.emit(i, current, temp, hours)
+        for device, prop in self._props:
+            value = self._mmcore.getProperty(device, prop)
+            self.updated.emit(device, prop, value)

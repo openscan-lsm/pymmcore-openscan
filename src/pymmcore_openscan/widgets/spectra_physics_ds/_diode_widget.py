@@ -13,6 +13,12 @@ from qtpy.QtWidgets import (
 
 from ._utils import _DEVICE_NAME, _PollingWorker
 
+_DIODE_PROPS = [
+    (_DEVICE_NAME, f"Diode {i} {field}")
+    for i in (1, 2)
+    for field in ("Current", "Temperature (Celsius)", "Accumulated Hours")
+]
+
 
 class _DiodePanel(QGroupBox):
     def __init__(self, title: str, parent: QWidget | None = None) -> None:
@@ -40,10 +46,14 @@ class _DiodePanel(QGroupBox):
         for sb in (self._current, self._temperature, self._hours):
             sb.setEnabled(enabled)
 
-    def update_values(self, current: float, temp: float, hours: float) -> None:
-        self._current.setValue(current)
-        self._temperature.setValue(temp)
-        self._hours.setValue(hours)
+    def update_field(self, field: str, value: float) -> None:
+        sb = {
+            "Current": self._current,
+            "Temperature (Celsius)": self._temperature,
+            "Accumulated Hours": self._hours,
+        }.get(field)
+        if sb is not None:
+            sb.setValue(value)
 
 
 class DiodeWidget(QWidget):
@@ -62,7 +72,7 @@ class DiodeWidget(QWidget):
         layout.addWidget(self._diode1)
         layout.addWidget(self._diode2)
 
-        self._worker = _PollingWorker(self._mmcore)
+        self._worker = _PollingWorker(self._mmcore, _DIODE_PROPS)
         self._thread = QThread()
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.start)
@@ -76,12 +86,16 @@ class DiodeWidget(QWidget):
         self._diode1.set_enabled(enabled)
         self._diode2.set_enabled(enabled)
         if enabled:
-            self._thread.start()
+            if not self._thread.isRunning():
+                self._thread.start()
         else:
             self._worker.stop()
             self._thread.quit()
             self._thread.wait()
 
-    def _on_updated(self, idx: int, current: float, temp: float, hours: float) -> None:
-        panel = self._diode1 if idx == 1 else self._diode2
-        panel.update_values(current, temp, hours)
+    def _on_updated(self, _: str, prop: str, value: str) -> None:
+        for i, panel in enumerate((self._diode1, self._diode2), start=1):
+            prefix = f"Diode {i} "
+            if prop.startswith(prefix):
+                panel.update_field(prop[len(prefix) :], float(value))
+                break

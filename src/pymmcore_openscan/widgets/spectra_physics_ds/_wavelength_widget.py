@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus, Device
 from qtpy.QtCore import Qt, QTimer
+from qtpy.QtGui import QColor, QPainter, QPainterPath
 from qtpy.QtWidgets import (
     QAbstractSpinBox,
     QDoubleSpinBox,
@@ -24,6 +25,59 @@ from ._utils import _DEVICE_NAME, _POLL_INTERVAL_MS
 
 if TYPE_CHECKING:
     from qtpy.QtCore import QPoint
+    from qtpy.QtGui import QPaintEvent
+
+_WL_MIN = 680.0
+_WL_MAX = 1300.0
+
+
+def _wavelength_to_rgb(wl: float) -> tuple[int, int, int]:
+    """Approximate perceptual color for a wavelength in nm (680-1300 nm range)."""
+    if wl <= 700:
+        return (220, 0, 0)
+    if wl <= 780:
+        t = (wl - 700) / 80
+        return (int(220 * (1 - 0.85 * t)), 0, 0)
+    t = min(1.0, (wl - 780) / 520)
+    return (int(33 * (1 - t)), 0, 0)
+
+
+class _WavelengthSwatch(QWidget):
+    """Gradient bar (680-1300 nm) with a position marker at the current wavelength."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._wavelength = _WL_MIN
+        self.setFixedHeight(28)
+        self.setMinimumWidth(120)
+
+    def set_wavelength(self, wl: float) -> None:
+        if wl == self._wavelength:
+            return
+        self._wavelength = wl
+        self.update()
+
+    def paintEvent(self, a0: QPaintEvent | None) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w = self.width()
+        bar_h = self.height() - 10
+
+        for x in range(w):
+            wl = _WL_MIN + (_WL_MAX - _WL_MIN) * x / w
+            r, g, b = _wavelength_to_rgb(wl)
+            painter.setPen(QColor(r, g, b))
+            painter.drawLine(x, 0, x, bar_h - 1)
+
+        x_pos = (self._wavelength - _WL_MIN) / (_WL_MAX - _WL_MIN) * w
+        path = QPainterPath()
+        path.moveTo(x_pos, bar_h + 1)
+        path.lineTo(x_pos - 5, self.height())
+        path.lineTo(x_pos + 5, self.height())
+        path.closeSubpath()
+        painter.setPen(QColor(0, 0, 0))
+        painter.setBrush(QColor(255, 255, 255, 200))
+        painter.drawPath(path)
 
 
 class WavelengthWidget(QWidget):
@@ -59,9 +113,12 @@ class WavelengthWidget(QWidget):
         self._presets_layout.addWidget(self._add_btn)
         self._presets_layout.addStretch()
 
+        self._swatch = _WavelengthSwatch()
+
         form = QFormLayout()
         form.addRow("Target:", self._target)
         form.addRow("Actual:", self._actual)
+        form.addRow(self._swatch)
 
         layout = QVBoxLayout(self)
         layout.addLayout(form)
@@ -76,6 +133,7 @@ class WavelengthWidget(QWidget):
             self._insert_preset_button(wl)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
+        self._try_enable()
 
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
@@ -98,6 +156,7 @@ class WavelengthWidget(QWidget):
         try:
             val = float(self._mmcore.getProperty(_DEVICE_NAME, "Actual Wavelength"))
             self._actual.setValue(val)
+            self._swatch.set_wavelength(val)
         except Exception:
             pass
 
