@@ -20,7 +20,7 @@ from qtpy.QtWidgets import (
 
 from ._utils import _DEVICE_NAME
 
-_HISTORY_PROP = "History Buffer"
+_HISTORY_PROP = "Status Code Buffer"
 _NUM_SLOTS = 16
 
 
@@ -118,7 +118,9 @@ class HistoryBufferPanel(QGroupBox):
         }
         for row, code in enumerate(codes):
             int_code = int(code)
-            entry = _HISTORY_CODES.get(int_code, (CodeType.WARNING, "Unknown code"))
+            entry = _HISTORY_CODES.get(
+                int_code, (CodeType.WARNING, f"Unknown code: {int_code}")
+            )
             desc = entry[1] if entry else ""
             code_item = QTableWidgetItem(code)
             desc_item = QTableWidgetItem(desc)
