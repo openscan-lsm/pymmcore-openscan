@@ -9,7 +9,7 @@ from qtpy.QtWidgets import QPushButton, QWidget
 if TYPE_CHECKING:
     from pymmcore_plus import CMMCorePlus
 
-_DEVICE_NAME = "SpectraPhysicsInsightDS+"
+_DEVICE_NAME = "InsightDS+"
 _POLL_INTERVAL_MS = 500
 
 
@@ -185,5 +185,5 @@ class _PollingWorker(QObject):
 
     def _poll(self) -> None:
         for device, prop in self._props:
-            value = self._mmcore.getProperty(device, prop)
+            value = str(self._mmcore.getProperty(device, prop))
             self.updated.emit(device, prop, value)

@@ -3,10 +3,9 @@ from __future__ import annotations
 from pymmcore_plus import CMMCorePlus
 from qtpy.QtCore import QThread
 from qtpy.QtWidgets import (
-    QAbstractSpinBox,
-    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
+    QLabel,
     QVBoxLayout,
     QWidget,
 )
@@ -24,18 +23,9 @@ class _DiodePanel(QGroupBox):
     def __init__(self, title: str, parent: QWidget | None = None) -> None:
         super().__init__(title, parent)
 
-        self._current = QDoubleSpinBox()
-        self._current.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self._current.setSuffix(" Amps")
-        self._temperature = QDoubleSpinBox()
-        self._temperature.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self._temperature.setSuffix(" Celsius")
-        self._hours = QDoubleSpinBox()
-        self._hours.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self._hours.setSuffix(" Hours")
-
-        for sb in (self._current, self._temperature, self._hours):
-            sb.setReadOnly(True)
+        self._current = QLabel("N/A")
+        self._temperature = QLabel("N/A")
+        self._hours = QLabel("N/A")
 
         layout = QFormLayout(self)
         layout.addRow("Current:", self._current)
@@ -47,13 +37,12 @@ class _DiodePanel(QGroupBox):
             sb.setEnabled(enabled)
 
     def update_field(self, field: str, value: float) -> None:
-        sb = {
-            "Current": self._current,
-            "Temperature (Celsius)": self._temperature,
-            "Accumulated Hours": self._hours,
-        }.get(field)
-        if sb is not None:
-            sb.setValue(value)
+        if field == "Current":
+            self._current.setText(f"{value:.3f} A")
+        elif field == "Temperature (Celsius)":
+            self._temperature.setText(f"{value:.1f} °C")
+        elif field == "Accumulated Hours":
+            self._hours.setText(f"{value:.1f} h")
 
 
 class DiodeWidget(QWidget):
@@ -74,8 +63,6 @@ class DiodeWidget(QWidget):
 
         self._worker = _PollingWorker(self._mmcore, _DIODE_PROPS)
         self._thread = QThread()
-        self._worker.moveToThread(self._thread)
-        self._thread.started.connect(self._worker.start)
         self._worker.updated.connect(self._on_updated)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
@@ -88,6 +75,7 @@ class DiodeWidget(QWidget):
         if enabled:
             if not self._thread.isRunning():
                 self._thread.start()
+                self._worker.start()
         else:
             self._worker.stop()
             self._thread.quit()

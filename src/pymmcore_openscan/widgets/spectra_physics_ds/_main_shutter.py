@@ -15,7 +15,7 @@ from pymmcore_plus.core import ShutterDevice
 
 from ._utils import SafetyButton
 
-DEVICE_NAME = "SpectraPhysicsInsightDS+ Main Shutter"
+DEVICE_NAME = "InsightDS+ Main"
 
 
 class ShutterMainButton(SafetyButton):

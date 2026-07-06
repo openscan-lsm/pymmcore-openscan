@@ -21,7 +21,7 @@ from qtpy.QtWidgets import (
 
 from pymmcore_openscan._settings import Settings
 
-from ._utils import _DEVICE_NAME, _POLL_INTERVAL_MS
+from ._utils import _POLL_INTERVAL_MS
 
 if TYPE_CHECKING:
     from qtpy.QtCore import QPoint
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 _WL_MIN = 680.0
 _WL_MAX = 1300.0
+_DEVICE_NAME = "InsightDS+ Main"
 
 
 def _wavelength_to_rgb(wl: float) -> tuple[int, int, int]:
@@ -148,13 +149,13 @@ class WavelengthWidget(QWidget):
     def _on_target_changed(self) -> None:
         if self._dev is None:
             return
-        self._dev.setProperty("Target Wavelength", str(self._target.value()))
+        self._dev.setProperty("Wavelength", str(self._target.value()))
 
     def _poll_actual(self) -> None:
         if self._dev is None:
             return
         try:
-            val = float(self._mmcore.getProperty(_DEVICE_NAME, "Actual Wavelength"))
+            val = float(self._mmcore.getProperty(_DEVICE_NAME, "Wavelength"))
             self._actual.setValue(val)
             self._swatch.set_wavelength(val)
         except Exception:

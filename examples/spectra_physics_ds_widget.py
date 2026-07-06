@@ -23,23 +23,23 @@ app = QApplication([])
 
 # Pass warmup_seconds=10 for a short demo; use ~30 for realistic timing.
 hub = InsightDSSim(warmup_seconds=10)
-mmcore.loadPyDevice("SpectraPhysicsInsightDS+", hub)
-mmcore.initializeDevice("SpectraPhysicsInsightDS+")
+mmcore.loadPyDevice("InsightDS+", hub)
+mmcore.initializeDevice("InsightDS+")
 
 for label, cls in [
-    ("SpectraPhysicsInsightDS+ Main Shutter", InsightDSMainShutterSim),
-    ("SpectraPhysicsInsightDS+ 1040nm Shutter", InsightDS1040ShutterSim),
+    ("InsightDS+ Main", InsightDSMainShutterSim),
+    ("InsightDS+ 1040nm", InsightDS1040ShutterSim),
 ]:
     dev = cls(hub)
     mmcore.loadPyDevice(label, dev)
-    mmcore.setParentLabel(label, "SpectraPhysicsInsightDS+")
+    mmcore.setParentLabel(label, "InsightDS+")
     mmcore.initializeDevice(label)
 
-# Uncomment to load a real SpectraPhysicsInsightDS+ device instead:
+# Uncomment to load a real InsightDS+ device instead:
 # from pymmcore_plus import CMMCorePlus
 # mmcore = CMMCorePlus().instance()
-# mmcore.loadDevice("SpectraPhysicsInsightDS+", "SpectraPhysics", "InsightDS+")
-# mmcore.initializeDevice("SpectraPhysicsInsightDS+")
+# mmcore.loadDevice("InsightDS+", "SpectraPhysics", "InsightDS+")
+# mmcore.initializeDevice("InsightDS+")
 
 diode = DiodeWidget(mmcore=mmcore)
 diode.setWindowTitle("Diode Widget")
