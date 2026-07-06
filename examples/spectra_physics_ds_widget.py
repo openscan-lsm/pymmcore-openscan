@@ -12,7 +12,6 @@ from pymmcore_openscan.sim.spectra_physics_ds import (  # noqa: E402
     InsightDSSim,
 )
 from pymmcore_openscan.widgets.spectra_physics_ds import (  # noqa: E402
-    DiodeWidget,
     LaserControlPanel,
     LaserDiagnosticsPanel,
     LaserPowerGraph,
@@ -40,10 +39,6 @@ for label, cls in [
 # mmcore = CMMCorePlus().instance()
 # mmcore.loadDevice("InsightDS+", "SpectraPhysics", "InsightDS+")
 # mmcore.initializeDevice("InsightDS+")
-
-diode = DiodeWidget(mmcore=mmcore)
-diode.setWindowTitle("Diode Widget")
-diode.show()
 
 wavelength = WavelengthWidget(mmcore=mmcore)
 wavelength.setWindowTitle("Wavelength Widget")

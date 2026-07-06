@@ -1,3 +1,5 @@
+"""Widgets displaying diode info."""
+
 from __future__ import annotations
 
 from pymmcore_plus import CMMCorePlus
@@ -5,8 +7,8 @@ from qtpy.QtCore import QThread
 from qtpy.QtWidgets import (
     QFormLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -57,7 +59,7 @@ class DiodeWidget(QWidget):
         self._diode1 = _DiodePanel("Diode 1")
         self._diode2 = _DiodePanel("Diode 2")
 
-        layout = QVBoxLayout(self)
+        layout = QHBoxLayout(self)
         layout.addWidget(self._diode1)
         layout.addWidget(self._diode2)
 

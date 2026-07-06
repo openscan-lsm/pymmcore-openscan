@@ -18,6 +18,7 @@ from qtpy.QtWidgets import (
 )
 from superqt import QIconifyIcon
 
+from ._diode_widget import DiodeWidget
 from ._history_buffer import HistoryBufferPanel
 from ._utils import _DEVICE_NAME, _PollingWorker
 
@@ -71,6 +72,8 @@ class LaserDiagnosticsPanel(QGroupBox):
 
         self._history = HistoryBufferPanel(mmcore=mmcore)
 
+        self._diodes = DiodeWidget(mmcore=mmcore)
+
         form = QFormLayout()
         form.addRow("System Warmup:", self._warmup)
         form.addRow("Laser State:", self._laser_state)
@@ -79,6 +82,7 @@ class LaserDiagnosticsPanel(QGroupBox):
         layout = QVBoxLayout(self)
         layout.addLayout(form)
         layout.addWidget(self._history)
+        layout.addWidget(self._diodes)
 
         self._worker = _PollingWorker(self._mmcore, _DIAG_PROPS)
         self._thread = QThread()
