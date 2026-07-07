@@ -14,7 +14,6 @@ from pymmcore_openscan.sim.spectra_physics_ds import (  # noqa: E402
 from pymmcore_openscan.widgets.spectra_physics_ds import (  # noqa: E402
     LaserControlPanel,
     LaserDiagnosticsPanel,
-    LaserPowerGraph,
     WavelengthWidget,
 )
 
@@ -51,9 +50,5 @@ laser.show()
 diagnostics = LaserDiagnosticsPanel(mmcore=mmcore)
 diagnostics.setWindowTitle("Diagnostics")
 diagnostics.show()
-
-power = LaserPowerGraph(mmcore=mmcore)
-power.setWindowTitle("Laser Power")
-power.show()
 
 app.exec()

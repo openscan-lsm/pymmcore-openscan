@@ -57,12 +57,6 @@ def _get_action_infos() -> list[WidgetActionInfo]:
             create_widget=_create_openscan_params,
         ),
         WidgetActionInfo(
-            key="insight_ds_diode",
-            text="Insight DS+ Diode",
-            icon="game-icons:laser-warning",
-            create_widget=_create_insight_ds_diode,
-        ),
-        WidgetActionInfo(
             key="insight_ds_wavelength",
             text="Insight DS+ Wavelength",
             icon="game-icons:laser-warning",
@@ -79,12 +73,6 @@ def _get_action_infos() -> list[WidgetActionInfo]:
             text="Insight DS+ Diagnostics",
             icon="game-icons:laser-warning",
             create_widget=_create_insight_ds_diagnostics,
-        ),
-        WidgetActionInfo(
-            key="insight_ds_power_graph",
-            text="Insight DS+ Power",
-            icon="game-icons:laser-warning",
-            create_widget=_create_insight_ds_power_graph,
         ),
     ]
 

@@ -12,11 +12,10 @@ from ._utils import _DEVICE_NAME, _POLL_INTERVAL_MS
 
 # MM device property name for laser output power — update to match the adapter
 _POWER_PROP = "Laser Power"
-_WINDOW_SECONDS = 60
 
 
 class LaserPowerGraph(QGroupBox):
-    """Rolling 60-second time-series of laser output power."""
+    """Time-series of laser output power."""
 
     def __init__(
         self,
@@ -66,8 +65,4 @@ class LaserPowerGraph(QGroupBox):
         t = monotonic() - self._t0
         self._times.append(t)
         self._powers.append(power)
-        cutoff = t - _WINDOW_SECONDS
-        while self._times and self._times[0] < cutoff:
-            self._times.popleft()
-            self._powers.popleft()
         self._curve.setData(list(self._times), list(self._powers))

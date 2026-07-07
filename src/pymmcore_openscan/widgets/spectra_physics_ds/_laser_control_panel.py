@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QThread
 from qtpy.QtWidgets import (
+    QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -14,6 +15,27 @@ from qtpy.QtWidgets import (
 from ._1040_shutter import Shutter1040Button
 from ._laser_button import LaserButton
 from ._main_shutter import ShutterMainButton
+from ._utils import _DEVICE_NAME, _PollingWorker
+
+_STATE_PROPS = [(_DEVICE_NAME, "Laser State")]
+
+
+def _state_text(code: int) -> str:
+    if code < 25:
+        return "Initializing"
+    if code == 25:
+        return "Ready"
+    if code < 50:
+        return "Turning On and/or Optimizing"
+    if code == 50:
+        return "Running"
+    if code < 59:
+        return "Entering Align mode"
+    if code == 60:
+        return "In Align mode"
+    if code < 69:
+        return "Exiting Align mode"
+    return "INVALID STATE"
 
 
 class LaserControlPanel(QGroupBox):
@@ -26,6 +48,8 @@ class LaserControlPanel(QGroupBox):
     ) -> None:
         super().__init__("Laser Control", parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
+
+        self._laser_state = QLabel("N/A")
 
         self.laser_button = LaserButton(mmcore=self._mmcore)
         self.main_shutter_button = ShutterMainButton(mmcore=self._mmcore)
@@ -41,7 +65,11 @@ class LaserControlPanel(QGroupBox):
 
         main_layout = QVBoxLayout(self)
 
-        # Top: laser label + button side by side
+        state_form = QFormLayout()
+        state_form.addRow("Laser State:", self._laser_state)
+        main_layout.addLayout(state_form)
+
+        # Laser enable button
         laser_row = QHBoxLayout()
         laser_label = QLabel("Pump Laser")
         laser_label.setAlignment(
@@ -51,7 +79,7 @@ class LaserControlPanel(QGroupBox):
         laser_row.addWidget(self.laser_button, stretch=1)
         main_layout.addLayout(laser_row)
 
-        # Bottom: two shutters in a labelled box
+        # Two shutters in a labelled box
         shutter_box = QGroupBox("Shutters")
         shutter_layout = QHBoxLayout(shutter_box)
         for label_text, btn in (
@@ -64,3 +92,27 @@ class LaserControlPanel(QGroupBox):
             shutter_layout.addLayout(col)
 
         main_layout.addWidget(shutter_box)
+
+        self._worker = _PollingWorker(self._mmcore, _STATE_PROPS)
+        self._thread = QThread()
+        self._worker.moveToThread(self._thread)
+        self._worker.updated.connect(self._on_updated)
+
+        self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
+        self._try_enable()
+
+    def _try_enable(self) -> None:
+        enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
+        self._laser_state.setEnabled(enabled)
+        if enabled:
+            if not self._thread.isRunning():
+                self._thread.start()
+                self._worker.start()
+        else:
+            self._worker.stop()
+            self._thread.quit()
+            self._thread.wait()
+
+    def _on_updated(self, _: str, prop: str, value: str) -> None:
+        if prop == "Laser State":
+            self._laser_state.setText(_state_text(int(value)))

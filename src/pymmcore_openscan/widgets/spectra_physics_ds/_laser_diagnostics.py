@@ -10,7 +10,6 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QProgressBar,
     QSpinBox,
     QVBoxLayout,
@@ -20,13 +19,13 @@ from superqt import QIconifyIcon
 
 from ._diode_widget import DiodeWidget
 from ._history_buffer import HistoryBufferPanel
+from ._power_graph import LaserPowerGraph
 from ._utils import _DEVICE_NAME, _PollingWorker
 
 _HUMIDITY_WARNING_THRESHOLD = 5
 
 _DIAG_PROPS = [
     (_DEVICE_NAME, "Warmup Percentage"),
-    (_DEVICE_NAME, "Laser State"),
     (_DEVICE_NAME, "Relative Humidity"),
 ]
 
@@ -45,9 +44,6 @@ class LaserDiagnosticsPanel(QGroupBox):
         self._warmup = QProgressBar()
         self._warmup.setRange(0, 100)
         self._warmup.setFormat("%v%")
-
-        self._laser_state = QLineEdit()
-        self._laser_state.setReadOnly(True)
 
         self._humidity = QSpinBox()
         self._humidity.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
@@ -71,23 +67,29 @@ class LaserDiagnosticsPanel(QGroupBox):
         humidity_row.addStretch()
 
         self._history = HistoryBufferPanel(mmcore=mmcore)
-
         self._diodes = DiodeWidget(mmcore=mmcore)
+        self._laser_power = LaserPowerGraph(mmcore=mmcore)
 
         form = QFormLayout()
         form.addRow("System Warmup:", self._warmup)
-        form.addRow("Laser State:", self._laser_state)
         form.addRow("Humidity:", humidity_row)
 
+        left_col = QVBoxLayout()
+        left_col.addLayout(form)
+        left_col.addWidget(self._diodes)
+        left_col.addWidget(self._laser_power)
+        left_col.addStretch()
+
+        columns = QHBoxLayout()
+        columns.addLayout(left_col, stretch=2)
+        columns.addWidget(self._history, stretch=1)
+
         layout = QVBoxLayout(self)
-        layout.addLayout(form)
-        layout.addWidget(self._history)
-        layout.addWidget(self._diodes)
+        layout.addLayout(columns)
 
         self._worker = _PollingWorker(self._mmcore, _DIAG_PROPS)
         self._thread = QThread()
         self._worker.moveToThread(self._thread)
-        self._thread.started.connect(self._worker.start)
         self._worker.updated.connect(self._on_updated)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
@@ -99,6 +101,7 @@ class LaserDiagnosticsPanel(QGroupBox):
         if enabled:
             if not self._thread.isRunning():
                 self._thread.start()
+                self._worker.start()
         else:
             self._worker.stop()
             self._thread.quit()
@@ -107,26 +110,6 @@ class LaserDiagnosticsPanel(QGroupBox):
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == "Warmup Percentage":
             self._warmup.setValue(int(value))
-        elif prop == "Laser State":
-            code = int(value)
-            # Code map taken from Insight DS+ manual, Appendix A
-            if 0 <= code and code < 25:
-                state_text = "Initializing"
-            elif code == 25:
-                state_text = "Ready"
-            elif 26 <= code and code < 50:
-                state_text = "Turning On and/or Optimizing"
-            elif code == 50:
-                state_text = "Running"
-            elif 51 <= code and code < 59:
-                state_text = "Entering Align mode"
-            elif code == 60:
-                state_text = "In Align mode"
-            elif 61 <= code and code < 69:
-                state_text = "Exiting Align mode"
-            else:
-                state_text = "INVALID STATE"
-            self._laser_state.setText(state_text)
         elif prop == "Relative Humidity":
             humidity = int(value)
             self._humidity.setValue(humidity)
