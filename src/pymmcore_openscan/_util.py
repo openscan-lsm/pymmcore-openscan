@@ -14,7 +14,6 @@ from pymmcore_openscan.widgets.spectra_physics_ds import (
     LaserControlPanel,
     LaserDiagnosticsPanel,
     LaserPowerGraph,
-    WavelengthWidget,
 )
 
 
@@ -57,12 +56,6 @@ def _get_action_infos() -> list[WidgetActionInfo]:
             create_widget=_create_openscan_params,
         ),
         WidgetActionInfo(
-            key="insight_ds_wavelength",
-            text="Insight DS+ Wavelength",
-            icon="game-icons:laser-warning",
-            create_widget=_create_insight_ds_wavelength,
-        ),
-        WidgetActionInfo(
             key="insight_ds_laser_control",
             text="Insight DS+ Laser Control",
             icon="game-icons:laser-warning",
@@ -102,10 +95,6 @@ def _create_openscan_params(parent: QWidget) -> QWidget:
 
 def _create_insight_ds_diode(parent: QWidget) -> QWidget:
     return DiodeWidget(parent=parent, mmcore=CMMCorePlus.instance())
-
-
-def _create_insight_ds_wavelength(parent: QWidget) -> QWidget:
-    return WavelengthWidget(parent=parent, mmcore=CMMCorePlus.instance())
 
 
 def _create_insight_ds_laser_control(parent: QWidget) -> QWidget:

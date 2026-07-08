@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import QSize
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import QApplication
 from superqt import QIconifyIcon
@@ -36,13 +35,7 @@ class ShutterButton(SafetyButton):
             .name()
         )
         self.off_icon = QIconifyIcon("mdi:hexagon-slice-6", color=text_color)
-        self.on_icon = QIconifyIcon("mdi:hexagon-outline", color="yellow")
-
-        font = self.font()
-        font.setPointSize(36)
-        self.setFont(font)
-        self.setIconSize(QSize(96, 96))
-        self.setMinimumHeight(96)
+        self.on_icon = QIconifyIcon("mdi:hexagon-outline", color=text_color)
 
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)

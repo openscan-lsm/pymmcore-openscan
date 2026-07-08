@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 from collections import deque
-from time import monotonic
+from time import time
 
 import pyqtgraph as pg
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import QTimer
-from qtpy.QtWidgets import QGroupBox, QVBoxLayout, QWidget
+from qtpy.QtCore import QEvent, QTimer
+from qtpy.QtGui import QPalette
+from qtpy.QtWidgets import (
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ._utils import _DEVICE_NAME, _POLL_INTERVAL_MS
 
@@ -27,17 +36,47 @@ class LaserPowerGraph(QGroupBox):
 
         self._times: deque[float] = deque()
         self._powers: deque[float] = deque()
-        self._t0 = monotonic()
+        self._setting_range = False
 
-        self._plot = pg.PlotWidget()
-        self._plot.setLabel("left", "Power", units="mW")
-        self._plot.setLabel("bottom", "Time", units="s")
+        self._plot = pg.PlotWidget(axisItems={"bottom": pg.DateAxisItem()})
+        self._plot.setLabel("left", "Power", units="W")
         self._plot.showGrid(x=True, y=True, alpha=0.3)
-        self._plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
-        self._curve = self._plot.plot(pen=pg.mkPen("r", width=2))
+        self._plot.setYRange(0, 3, padding=0)
+        self._plot.hideButtons()
+        vb = self._plot.getViewBox()
+        vb.setMouseMode(pg.ViewBox.PanMode)
+        vb.setMouseEnabled(x=True, y=False)
+        # Disable "Last" mode when the user manually pans/zooms
+        vb.sigRangeChangedManually.connect(self._on_manual_range_change)
+        highlight = self.palette().color(QPalette.ColorRole.Highlight)
+        self._curve = self._plot.plot(pen=pg.mkPen(highlight, width=2))
+
+        # Controls toolbar
+        self._last_spin = QSpinBox()
+        self._last_spin.setRange(1, 3600)
+        self._last_spin.setValue(10)
+        self._last_spin.setSuffix(" s")
+        self._last_spin.valueChanged.connect(self._on_last_spin_changed)
+
+        fit_btn = QPushButton("Fit All")
+        fit_btn.clicked.connect(self._on_fit_all)
+
+        self._last_btn = QPushButton("Last")
+        self._last_btn.setCheckable(True)
+        self._last_btn.setChecked(True)
+        self._last_btn.toggled.connect(self._on_last_toggled)
+
+        controls = QHBoxLayout()
+        controls.setContentsMargins(0, 0, 0, 0)
+        controls.addWidget(fit_btn)
+        controls.addStretch()
+        controls.addWidget(QLabel("Last"))
+        controls.addWidget(self._last_spin)
+        controls.addWidget(self._last_btn)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._plot)
+        layout.addLayout(controls)
 
         self._timer = QTimer()
         self._timer.setInterval(_POLL_INTERVAL_MS)
@@ -46,23 +85,54 @@ class LaserPowerGraph(QGroupBox):
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
 
+    def _scroll_to_last(self) -> None:
+        n = self._last_spin.value()
+        self._setting_range = True
+        self._plot.setXRange(time() - n, time(), padding=0)
+        self._setting_range = False
+
+    def _on_fit_all(self) -> None:
+        self._last_btn.setChecked(False)
+        if self._times:
+            self._setting_range = True
+            self._plot.setXRange(min(self._times), max(self._times), padding=0.05)
+            self._setting_range = False
+
+    def _on_last_toggled(self, checked: bool) -> None:
+        if checked:
+            self._scroll_to_last()
+
+    def _on_last_spin_changed(self) -> None:
+        if self._last_btn.isChecked():
+            self._scroll_to_last()
+
+    def _on_manual_range_change(self) -> None:
+        if not self._setting_range:
+            self._last_btn.setChecked(False)
+
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
         if enabled:
-            self._t0 = monotonic()
             self._times.clear()
             self._powers.clear()
             self._timer.start()
         else:
             self._timer.stop()
 
+    def changeEvent(self, a0: QEvent | None) -> None:
+        super().changeEvent(a0)
+        if a0 is not None and a0.type() == QEvent.Type.PaletteChange:
+            highlight = self.palette().color(QPalette.ColorRole.Highlight)
+            self._curve.setPen(pg.mkPen(highlight, width=2))
+
     def _poll(self) -> None:
         try:
             power = float(self._mmcore.getProperty(_DEVICE_NAME, _POWER_PROP))
         except Exception:
             return
-        t = monotonic() - self._t0
-        self._times.append(t)
+        self._times.append(time())
         self._powers.append(power)
         self._curve.setData(list(self._times), list(self._powers))
+        if self._last_btn.isChecked():
+            self._scroll_to_last()

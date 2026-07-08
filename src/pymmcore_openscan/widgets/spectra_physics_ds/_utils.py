@@ -50,15 +50,6 @@ class SafetyButton(QPushButton):
         self._counting_icon = counting_icon or QIcon()
         self._off_icon = off_icon or QIcon()
 
-        self.setStyleSheet("""
-            QPushButton:checked {
-                background-color: #7B1111;
-            }
-            QPushButton:checked:hover {
-                background-color: #8B1818;
-            }
-        """)
-
         self._countdown_seconds = countdown_seconds
         self.countdown_seconds = countdown_seconds  # sets tooltip
 

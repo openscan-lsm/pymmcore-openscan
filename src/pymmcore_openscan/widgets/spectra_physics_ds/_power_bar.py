@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus
 from qtpy.QtCore import Qt, QThread
-from qtpy.QtGui import QColor, QPainter
-from qtpy.QtWidgets import QGroupBox, QVBoxLayout, QWidget
+from qtpy.QtGui import QPainter
+from qtpy.QtWidgets import QVBoxLayout, QWidget
 
 from ._utils import _DEVICE_NAME, _PollingWorker
 
@@ -26,7 +26,7 @@ class _PowerBarCanvas(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._value = 0.0
-        self.setFixedHeight(52)
+        self.setFixedHeight(30)
         self.setMinimumWidth(100)
 
     def set_value(self, value: float) -> None:
@@ -50,20 +50,22 @@ class _PowerBarCanvas(QWidget):
         tick_area_h = self._TICK_LINE_H + self._LABEL_GAP + fm.height()
         bar_h = max(4, h - tick_area_h - 2)
 
+        pal = self.palette()
+
         # Background track
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(60, 60, 60))
+        painter.setBrush(pal.color(pal.ColorRole.Mid))
         painter.drawRoundedRect(0, 0, w, bar_h, 3, 3)
 
         # Filled portion
         fraction = max(0.0, min(1.0, self._value / _BAR_MAX))
         fill_w = int(fraction * w)
         if fill_w > 0:
-            painter.setBrush(QColor(180, 80, 80))
+            painter.setBrush(pal.color(pal.ColorRole.Highlight))
             painter.drawRoundedRect(0, 0, fill_w, bar_h, 3, 3)
 
         # Ticks and labels
-        painter.setPen(QColor(160, 160, 160))
+        painter.setPen(pal.color(pal.ColorRole.PlaceholderText))
         tick_top = bar_h + 2
         label_baseline = tick_top + self._TICK_LINE_H + self._LABEL_GAP + fm.ascent()
 
@@ -78,7 +80,7 @@ class _PowerBarCanvas(QWidget):
             painter.drawText(lx, label_baseline, label)
 
 
-class PowerBarWidget(QGroupBox):
+class PowerBarWidget(QWidget):
     """Laser output power bar (0-3), polled from the device."""
 
     def __init__(
@@ -86,7 +88,7 @@ class PowerBarWidget(QGroupBox):
         parent: QWidget | None = None,
         mmcore: CMMCorePlus | None = None,
     ) -> None:
-        super().__init__("Laser Power", parent)
+        super().__init__(parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
 
         self._bar = _PowerBarCanvas()

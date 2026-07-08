@@ -14,7 +14,6 @@ from pymmcore_openscan.sim.spectra_physics_ds import (  # noqa: E402
 from pymmcore_openscan.widgets.spectra_physics_ds import (  # noqa: E402
     LaserControlPanel,
     LaserDiagnosticsPanel,
-    WavelengthWidget,
 )
 
 app = QApplication([])
@@ -38,10 +37,6 @@ for label, cls in [
 # mmcore = CMMCorePlus().instance()
 # mmcore.loadDevice("InsightDS+", "SpectraPhysics", "InsightDS+")
 # mmcore.initializeDevice("InsightDS+")
-
-wavelength = WavelengthWidget(mmcore=mmcore)
-wavelength.setWindowTitle("Wavelength Widget")
-wavelength.show()
 
 laser = LaserControlPanel(mmcore=mmcore)
 laser.setWindowTitle("Laser")

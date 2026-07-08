@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus, Device
-from qtpy.QtCore import QSize
-from superqt import QIconifyIcon
+from qtpy.QtGui import QIcon
 
 if TYPE_CHECKING:
     from qtpy.QtWidgets import QWidget
 
 from ._utils import _DEVICE_NAME, SafetyButton
+
+_LASER_SVG = Path(__file__).parent / "_assets" / "laser-symbol.svg"
 
 
 class LaserButton(SafetyButton):
@@ -24,22 +26,8 @@ class LaserButton(SafetyButton):
         self._mmcore = mmcore or CMMCorePlus.instance()
         self._dev: Device | None = None
 
-        self.on_icon = QIconifyIcon("game-icons:laser-warning", color="yellow")
+        self.on_icon = QIcon(str(_LASER_SVG))
         self.off_text = "Off"
-
-        font = self.font()
-        font.setPointSize(36)
-        self.setFont(font)
-        self.setIconSize(QSize(96, 96))
-        self.setMinimumHeight(96)
-        self.setStyleSheet("""
-            QPushButton:checked {
-                background-color: #7B1111;
-            }
-            QPushButton:checked:hover {
-                background-color: #8B1818;
-            }
-        """)
 
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)

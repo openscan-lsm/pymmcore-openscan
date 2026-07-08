@@ -4,14 +4,12 @@ from pymmcore_plus import CMMCorePlus
 from qtpy.QtCore import QThread
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import (
-    QAbstractSpinBox,
     QApplication,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QProgressBar,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -45,11 +43,8 @@ class LaserDiagnosticsPanel(QGroupBox):
         self._warmup.setRange(0, 100)
         self._warmup.setFormat("%v%")
 
-        self._humidity = QSpinBox()
-        self._humidity.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self._humidity.setSuffix(" %")
-        self._humidity.setReadOnly(True)
-        self._humidity.setRange(0, 100)
+        self._humidity = QLabel()
+        self._humidity.setText("N/A")
         self._humidity_warning = QLabel()
         accent = (
             QApplication.palette()
@@ -112,5 +107,5 @@ class LaserDiagnosticsPanel(QGroupBox):
             self._warmup.setValue(int(value))
         elif prop == "Relative Humidity":
             humidity = int(value)
-            self._humidity.setValue(humidity)
+            self._humidity.setText(f"{humidity} %")
             self._humidity_warning.setVisible(humidity > _HUMIDITY_WARNING_THRESHOLD)

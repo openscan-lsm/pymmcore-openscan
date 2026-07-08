@@ -7,7 +7,6 @@ from ._laser_control_panel import LaserControlPanel
 from ._laser_diagnostics import LaserDiagnosticsPanel
 from ._power_graph import LaserPowerGraph
 from ._shutter_button import ShutterButton
-from ._wavelength_widget import WavelengthWidget
 
 __all__: list[str] = [
     "DiodeWidget",
@@ -17,5 +16,4 @@ __all__: list[str] = [
     "LaserDiagnosticsPanel",
     "LaserPowerGraph",
     "ShutterButton",
-    "WavelengthWidget",
 ]
