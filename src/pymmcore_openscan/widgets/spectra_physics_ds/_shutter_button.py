@@ -36,7 +36,7 @@ class ShutterButton(SafetyButton):
             .name()
         )
         self.off_icon = QIconifyIcon("mdi:hexagon-slice-6", color=text_color)
-        self.on_icon = QIconifyIcon("mdi:hexagon-outline", color=text_color)
+        self.on_icon = QIconifyIcon("mdi:hexagon-outline", color="yellow")
 
         font = self.font()
         font.setPointSize(36)

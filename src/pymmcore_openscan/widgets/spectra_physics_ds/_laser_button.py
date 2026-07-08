@@ -4,8 +4,6 @@ from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus, Device
 from qtpy.QtCore import QSize
-from qtpy.QtGui import QPalette
-from qtpy.QtWidgets import QApplication
 from superqt import QIconifyIcon
 
 if TYPE_CHECKING:
@@ -26,12 +24,7 @@ class LaserButton(SafetyButton):
         self._mmcore = mmcore or CMMCorePlus.instance()
         self._dev: Device | None = None
 
-        text_color = (
-            QApplication.palette()
-            .color(QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
-            .name()
-        )
-        self.on_icon = QIconifyIcon("game-icons:laser-warning", color=text_color)
+        self.on_icon = QIconifyIcon("game-icons:laser-warning", color="yellow")
         self.off_text = "Off"
 
         font = self.font()
@@ -39,6 +32,14 @@ class LaserButton(SafetyButton):
         self.setFont(font)
         self.setIconSize(QSize(96, 96))
         self.setMinimumHeight(96)
+        self.setStyleSheet("""
+            QPushButton:checked {
+                background-color: #7B1111;
+            }
+            QPushButton:checked:hover {
+                background-color: #8B1818;
+            }
+        """)
 
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)

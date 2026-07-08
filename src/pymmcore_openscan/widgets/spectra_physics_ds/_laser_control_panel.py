@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (
 )
 
 from ._laser_button import LaserButton
+from ._power_bar import PowerBarWidget
 from ._shutter_button import ShutterButton
 from ._utils import (
     _DEVICE_NAME,
@@ -76,6 +77,9 @@ class LaserControlPanel(QGroupBox):
         state_form = QFormLayout()
         state_form.addRow("Laser State:", self._laser_state)
         main_layout.addLayout(state_form)
+
+        power_bar = PowerBarWidget(mmcore=self._mmcore)
+        main_layout.addWidget(power_bar)
 
         # Laser enable button
         laser_row = QHBoxLayout()
