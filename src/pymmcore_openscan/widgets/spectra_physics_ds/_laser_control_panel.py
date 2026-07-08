@@ -12,10 +12,14 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ._1040_shutter import Shutter1040Button
 from ._laser_button import LaserButton
-from ._main_shutter import ShutterMainButton
-from ._utils import _DEVICE_NAME, _PollingWorker
+from ._shutter_button import ShutterButton
+from ._utils import (
+    _DEVICE_NAME,
+    _MAIN_SHUTTER_DEVICE,
+    _SHUTTER_1040_DEVICE,
+    _PollingWorker,
+)
 
 _STATE_PROPS = [(_DEVICE_NAME, "Laser State")]
 
@@ -52,8 +56,12 @@ class LaserControlPanel(QGroupBox):
         self._laser_state = QLabel("N/A")
 
         self.laser_button = LaserButton(mmcore=self._mmcore)
-        self.main_shutter_button = ShutterMainButton(mmcore=self._mmcore)
-        self.shutter_1040_button = Shutter1040Button(mmcore=self._mmcore)
+        self.main_shutter_button = ShutterButton(
+            _MAIN_SHUTTER_DEVICE, mmcore=self._mmcore
+        )
+        self.shutter_1040_button = ShutterButton(
+            _SHUTTER_1040_DEVICE, mmcore=self._mmcore
+        )
 
         expand = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         for btn in (

@@ -15,19 +15,19 @@ from pymmcore_plus.core import ShutterDevice
 
 from ._utils import SafetyButton
 
-DEVICE_NAME = "InsightDS+ 1040nm"
 
-
-class Shutter1040Button(SafetyButton):
-    """1040nm shutter open/close button with a safety countdown."""
+class ShutterButton(SafetyButton):
+    """Shutter open/close button with a safety countdown."""
 
     def __init__(
         self,
+        device_name: str,
         parent: QWidget | None = None,
         mmcore: CMMCorePlus | None = None,
     ) -> None:
         super().__init__(parent=parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
+        self._device_name = device_name
         self._dev: ShutterDevice | None = None
 
         text_color = (
@@ -35,12 +35,8 @@ class Shutter1040Button(SafetyButton):
             .color(QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
             .name()
         )
-        self.off_icon = QIconifyIcon(
-            "material-symbols-light:camera-outline", color=text_color
-        )
-        self.on_icon = QIconifyIcon(
-            "material-symbols-light:circle-outline", color=text_color
-        )
+        self.off_icon = QIconifyIcon("mdi:hexagon-slice-6", color=text_color)
+        self.on_icon = QIconifyIcon("mdi:hexagon-outline", color=text_color)
 
         font = self.font()
         font.setPointSize(36)
@@ -53,10 +49,10 @@ class Shutter1040Button(SafetyButton):
         self._try_enable()
 
     def _try_enable(self) -> None:
-        enabled = DEVICE_NAME in self._mmcore.getLoadedDevices()
+        enabled = self._device_name in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
         if enabled:
-            self._dev = self._mmcore.getDeviceObject(DEVICE_NAME, ShutterDevice)
+            self._dev = self._mmcore.getDeviceObject(self._device_name, ShutterDevice)
         else:
             self._dev = None
 

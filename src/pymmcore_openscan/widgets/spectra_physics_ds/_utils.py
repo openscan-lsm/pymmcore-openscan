@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from pymmcore_plus import CMMCorePlus
 
 _DEVICE_NAME = "InsightDS+"
+_MAIN_SHUTTER_DEVICE = "InsightDS+ Main"
+_SHUTTER_1040_DEVICE = "InsightDS+ 1040nm"
 _POLL_INTERVAL_MS = 500
 
 
