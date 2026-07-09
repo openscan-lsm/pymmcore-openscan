@@ -35,7 +35,7 @@ class ShutterButton(SafetyButton):
             .name()
         )
         self.off_icon = QIconifyIcon("mdi:hexagon-slice-6", color=text_color)
-        self.on_icon = QIconifyIcon("mdi:hexagon-outline", color=text_color)
+        self.on_icon = QIconifyIcon("mdi:hexagon-outline")
 
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)

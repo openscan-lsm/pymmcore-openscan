@@ -47,15 +47,14 @@ class _PowerBarCanvas(QWidget):
         painter.setFont(font)
         fm = painter.fontMetrics()
 
-        tick_area_h = self._TICK_LINE_H + self._LABEL_GAP + fm.height()
-        bar_h = max(4, h - tick_area_h - 2)
+        bar_h = h - self._LABEL_GAP - fm.height()
 
         pal = self.palette()
 
         # Background track
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(pal.color(pal.ColorRole.Mid))
-        painter.drawRoundedRect(0, 0, w, bar_h, 3, 3)
+        painter.drawRect(0, 0, w, bar_h)
 
         # Filled portion
         fraction = max(0.0, min(1.0, self._value / _BAR_MAX))
@@ -64,20 +63,30 @@ class _PowerBarCanvas(QWidget):
             painter.setBrush(pal.color(pal.ColorRole.Highlight))
             painter.drawRoundedRect(0, 0, fill_w, bar_h, 3, 3)
 
-        # Ticks and labels
+        # Ticks on the bar; labels below ticks
         painter.setPen(pal.color(pal.ColorRole.PlaceholderText))
-        tick_top = bar_h + 2
-        label_baseline = tick_top + self._TICK_LINE_H + self._LABEL_GAP + fm.ascent()
+        tick_top = 0
+        label_baseline = bar_h + self._LABEL_GAP + fm.ascent()
 
         n_ticks = round(_BAR_MAX / _TICK_INTERVAL) + 1
         for i in range(n_ticks):
             val = i * _TICK_INTERVAL
             x = min(round(val / _BAR_MAX * w), w - 1)
-            painter.drawLine(x, tick_top, x, tick_top + self._TICK_LINE_H - 1)
-            label = f"{val:g}"
-            lw = fm.horizontalAdvance(label)
-            lx = max(0, min(x - lw // 2, w - lw))
-            painter.drawText(lx, label_baseline, label)
+            top = tick_top if val % 1 == 0 else tick_top + (3 * bar_h // 4)
+            painter.drawLine(x, top, x, bar_h)
+            if val % 3 == 0:
+                label = f"{val:g}"
+                lw = fm.horizontalAdvance(label)
+                lx = max(0, min(x - lw // 2, w - lw))
+                painter.drawText(lx, label_baseline, label)
+
+        # "Output Power (W)" title centered on the bar
+        painter.setPen(pal.color(pal.ColorRole.PlaceholderText))
+        title = "Output Power (W)"
+        tw = fm.horizontalAdvance(title)
+        tx = max(0, (w - tw) // 2)
+        ty = label_baseline
+        painter.drawText(tx, ty, title)
 
 
 class PowerBarWidget(QWidget):
@@ -95,6 +104,7 @@ class PowerBarWidget(QWidget):
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._bar)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self._worker = _PollingWorker(self._mmcore, [(_DEVICE_NAME, _POWER_PROP)])
         self._thread = QThread()

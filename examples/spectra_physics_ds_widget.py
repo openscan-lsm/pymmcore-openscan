@@ -13,7 +13,6 @@ from pymmcore_openscan.sim.spectra_physics_ds import (  # noqa: E402
 )
 from pymmcore_openscan.widgets.spectra_physics_ds import (  # noqa: E402
     LaserControlPanel,
-    LaserDiagnosticsPanel,
 )
 
 app = QApplication([])
@@ -42,8 +41,12 @@ laser = LaserControlPanel(mmcore=mmcore)
 laser.setWindowTitle("Laser")
 laser.show()
 
-diagnostics = LaserDiagnosticsPanel(mmcore=mmcore)
-diagnostics.setWindowTitle("Diagnostics")
-diagnostics.show()
+# diagnostics = LaserDiagnosticsPanel(mmcore=mmcore)
+# diagnostics.setWindowTitle("Diagnostics")
+# diagnostics.show()
+
+# browser = PropertyBrowser(mmcore=mmcore)
+# browser.setWindowTitle("Device Property Browser")
+# browser.show()
 
 app.exec()

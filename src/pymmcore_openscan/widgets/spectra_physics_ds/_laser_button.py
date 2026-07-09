@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus, Device
 from qtpy.QtGui import QPalette
-from qtpy.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication, QSizePolicy
 from superqt import QIconifyIcon
 
 if TYPE_CHECKING:
@@ -39,6 +39,7 @@ class LaserButton(SafetyButton):
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()

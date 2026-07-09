@@ -10,6 +10,7 @@ from qtpy.QtWidgets import (
     QFormLayout,
     QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QSizePolicy,
     QVBoxLayout,
@@ -85,9 +86,13 @@ class LaserControlPanel(QWidget):
         self.main_shutter_button = ShutterButton(
             _MAIN_SHUTTER_DEVICE, mmcore=self._mmcore
         )
+        self.main_shutter_button.on_text = "Main"
+        self.main_shutter_button.off_text = "Main"
         self.shutter_1040_button = ShutterButton(
             _SHUTTER_1040_DEVICE, mmcore=self._mmcore
         )
+        self.shutter_1040_button.on_text = "1040nm"
+        self.shutter_1040_button.off_text = "1040nm"
 
         main_layout = QVBoxLayout(self)
 
@@ -98,11 +103,16 @@ class LaserControlPanel(QWidget):
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
         laser_group_layout = QVBoxLayout(laser_group)
+        top_row = QHBoxLayout()
         laser_form = QFormLayout()
         laser_form.addRow("State:", self._laser_state)
-        laser_form.addRow("Power (W):", PowerBarWidget(mmcore=self._mmcore))
-        laser_group_layout.addLayout(laser_form)
-        laser_group_layout.addWidget(self.laser_button)
+        top_row.addLayout(laser_form, stretch=1)
+        top_row.addWidget(
+            self.laser_button,
+            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight,
+        )
+        laser_group_layout.addLayout(top_row)
+        laser_group_layout.addWidget(PowerBarWidget(mmcore=self._mmcore))
         main_layout.addWidget(laser_group, stretch=0)
 
         # Shutters group
@@ -112,12 +122,14 @@ class LaserControlPanel(QWidget):
         shutter_group = QGroupBox("Shutters")
         shutter_layout = QGridLayout(shutter_group)
         shutter_layout.addWidget(
-            self._shutter_icon, 2, 0, 1, 2, Qt.AlignmentFlag.AlignHCenter
+            self._shutter_icon, 1, 0, 1, 2, Qt.AlignmentFlag.AlignHCenter
         )
-        shutter_layout.addWidget(QLabel("Main"), 0, 0, Qt.AlignmentFlag.AlignHCenter)
-        shutter_layout.addWidget(self.main_shutter_button, 1, 0)
-        shutter_layout.addWidget(QLabel("1040nm"), 0, 1, Qt.AlignmentFlag.AlignHCenter)
-        shutter_layout.addWidget(self.shutter_1040_button, 1, 1)
+        shutter_layout.addWidget(
+            self.main_shutter_button, 0, 0, Qt.AlignmentFlag.AlignHCenter
+        )
+        shutter_layout.addWidget(
+            self.shutter_1040_button, 0, 1, Qt.AlignmentFlag.AlignHCenter
+        )
         self.main_shutter_button.toggled.connect(self._update_shutter_icon)
         self.shutter_1040_button.toggled.connect(self._update_shutter_icon)
         main_layout.addWidget(shutter_group)
