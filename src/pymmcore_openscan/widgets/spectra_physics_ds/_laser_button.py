@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus, Device
-from qtpy.QtGui import QIcon
+from qtpy.QtGui import QPalette
+from qtpy.QtWidgets import QApplication
+from superqt import QIconifyIcon
 
 if TYPE_CHECKING:
     from qtpy.QtWidgets import QWidget
@@ -26,8 +28,13 @@ class LaserButton(SafetyButton):
         self._mmcore = mmcore or CMMCorePlus.instance()
         self._dev: Device | None = None
 
-        self.on_icon = QIcon(str(_LASER_SVG))
-        self.off_text = "Off"
+        text_color = (
+            QApplication.palette()
+            .color(QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
+            .name()
+        )
+        self.off_icon = QIconifyIcon("mdi:power", color=text_color)
+        self.on_icon = QIconifyIcon("mdi:power", color=text_color)
 
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
@@ -40,4 +47,10 @@ class LaserButton(SafetyButton):
 
     def _on_toggled(self, checked: bool) -> None:
         if self.isEnabled() and self._dev:
-            self._dev.setProperty("Pump Laser", "On" if checked else "Off")
+            try:
+                self._dev.setProperty("Pump Laser", "On" if checked else "Off")
+            except RuntimeError as e:
+                # FIXME: There has got to be a better way to do this
+                self._state = self._OFF
+                self._refresh()
+                raise e

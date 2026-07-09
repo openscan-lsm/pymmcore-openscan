@@ -8,10 +8,9 @@ from qtpy.QtCore import Qt, QTimer
 if TYPE_CHECKING:
     from qtpy.QtCore import QPoint
 from qtpy.QtWidgets import (
-    QAbstractSpinBox,
-    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
+    QLabel,
     QMenu,
     QPushButton,
     QSpinBox,
@@ -43,11 +42,8 @@ class WavelengthWidget(QWidget):
         self._target.setSuffix(" nm")
         self._target.editingFinished.connect(self._on_target_changed)
 
-        self._actual = QDoubleSpinBox()
-        self._actual.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self._actual.setRange(0, 9999)
-        self._actual.setSuffix(" nm")
-        self._actual.setReadOnly(True)
+        self._actual = QLabel()
+        self._actual.setText("N/A")
 
         self._presets_group = QGroupBox("Presets")
         self._presets_layout = QFlowLayout(self._presets_group)
@@ -75,25 +71,35 @@ class WavelengthWidget(QWidget):
         self._try_enable()
 
     def _try_enable(self) -> None:
-        enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
-        self._dev = self._mmcore.getDeviceObject(_DEVICE_NAME) if enabled else None
-        self.setEnabled(enabled)
-        if enabled:
+        # Search for the device
+        self._dev = (
+            self._mmcore.getDeviceObject(_DEVICE_NAME)
+            if _DEVICE_NAME in self._mmcore.getLoadedDevices()
+            else None
+        )
+
+        if self._dev:
+            # Enable the widget
+            self.setEnabled(True)
+            self._target.setValue(int(self._dev.getProperty("Target Wavelength")))
             self._poll_timer.start()
         else:
+            # Disable the widget
+            self.setEnabled(False)
+            self._target.setValue(0)
             self._poll_timer.stop()
 
     def _on_target_changed(self) -> None:
         if self._dev is None:
             return
-        self._dev.setProperty("Wavelength", str(self._target.value()))
+        self._dev.setProperty("Target Wavelength", str(self._target.value()))
 
     def _poll_actual(self) -> None:
         if self._dev is None:
             return
         try:
-            val = float(self._mmcore.getProperty(_DEVICE_NAME, "Wavelength"))
-            self._actual.setValue(val)
+            val = float(self._mmcore.getProperty(_DEVICE_NAME, "Actual Wavelength"))
+            self._actual.setText(f"{val:g} nm")
         except Exception:
             pass
 
