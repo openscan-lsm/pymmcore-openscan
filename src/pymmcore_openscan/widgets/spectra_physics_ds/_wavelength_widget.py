@@ -81,7 +81,7 @@ class WavelengthWidget(QWidget):
         if self._dev:
             # Enable the widget
             self.setEnabled(True)
-            self._target.setValue(int(self._dev.getProperty("Target Wavelength")))
+            self._target.setValue(int(self._dev.getProperty("Target Wavelength (nm)")))
             self._poll_timer.start()
         else:
             # Disable the widget
@@ -92,13 +92,15 @@ class WavelengthWidget(QWidget):
     def _on_target_changed(self) -> None:
         if self._dev is None:
             return
-        self._dev.setProperty("Target Wavelength", str(self._target.value()))
+        self._dev.setProperty("Target Wavelength (nm)", str(self._target.value()))
 
     def _poll_actual(self) -> None:
         if self._dev is None:
             return
         try:
-            val = float(self._mmcore.getProperty(_DEVICE_NAME, "Actual Wavelength"))
+            val = float(
+                self._mmcore.getProperty(_DEVICE_NAME, "Actual Wavelength (nm)")
+            )
             self._actual.setText(f"{val:g} nm")
         except Exception:
             pass

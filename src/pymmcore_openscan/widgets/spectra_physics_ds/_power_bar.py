@@ -12,7 +12,7 @@ from ._utils import _DEVICE_NAME, _PollingWorker
 if TYPE_CHECKING:
     from qtpy.QtGui import QPaintEvent
 
-_POWER_PROP = "Laser Power (Watts)"
+_POWER_PROP = "Laser Power (W)"
 _BAR_MAX = 3.0
 _TICK_INTERVAL = 0.5
 

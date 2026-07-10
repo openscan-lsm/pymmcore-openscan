@@ -19,8 +19,7 @@ from qtpy.QtWidgets import (
 
 from ._utils import _DEVICE_NAME, _POLL_INTERVAL_MS
 
-# MM device property name for laser output power — update to match the adapter
-_POWER_PROP = "Laser Power (Watts)"
+_POWER_PROP = "Laser Power (W)"
 
 
 class LaserPowerGraph(QGroupBox):

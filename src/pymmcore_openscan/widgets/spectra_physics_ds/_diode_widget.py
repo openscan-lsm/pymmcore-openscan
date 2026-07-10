@@ -17,7 +17,7 @@ from ._utils import _DEVICE_NAME, _PollingWorker
 _DIODE_PROPS = [
     (_DEVICE_NAME, f"Diode {i} {field}")
     for i in (1, 2)
-    for field in ("Current", "Temperature (Celsius)", "Accumulated Hours")
+    for field in ("Current (A)", "Temperature (C)", "Accumulated Hours")
 ]
 
 
@@ -39,9 +39,9 @@ class _DiodePanel(QGroupBox):
             sb.setEnabled(enabled)
 
     def update_field(self, field: str, value: float) -> None:
-        if field == "Current":
+        if field == "Current (A)":
             self._current.setText(f"{value:.3f} A")
-        elif field == "Temperature (Celsius)":
+        elif field == "Temperature (C)":
             self._temperature.setText(f"{value:.1f} °C")
         elif field == "Accumulated Hours":
             self._hours.setText(f"{value:.1f} h")

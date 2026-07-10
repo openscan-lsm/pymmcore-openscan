@@ -23,8 +23,8 @@ from ._utils import _DEVICE_NAME, _PollingWorker
 _HUMIDITY_WARNING_THRESHOLD = 5
 
 _DIAG_PROPS = [
-    (_DEVICE_NAME, "Warmup Percentage"),
-    (_DEVICE_NAME, "Relative Humidity"),
+    (_DEVICE_NAME, "Warmup Percentage (%)"),
+    (_DEVICE_NAME, "Relative Humidity (%)"),
 ]
 
 
@@ -103,9 +103,9 @@ class LaserDiagnosticsPanel(QGroupBox):
             self._thread.wait()
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
-        if prop == "Warmup Percentage":
+        if prop == "Warmup Percentage (%)":
             self._warmup.setValue(int(value))
-        elif prop == "Relative Humidity":
+        elif prop == "Relative Humidity (%)":
             humidity = int(value)
             self._humidity.setText(f"{humidity} %")
             self._humidity_warning.setVisible(humidity > _HUMIDITY_WARNING_THRESHOLD)
