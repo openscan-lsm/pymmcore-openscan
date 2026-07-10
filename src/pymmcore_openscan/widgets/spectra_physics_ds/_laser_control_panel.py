@@ -53,24 +53,6 @@ def _render_svg(data: bytes) -> QPixmap:
 _STATE_PROPS = [(_DEVICE_NAME, "Laser State")]
 
 
-def _state_text(code: int) -> str:
-    if code < 25:
-        return "Initializing"
-    if code == 25:
-        return "Ready"
-    if code < 50:
-        return "Turning On and/or Optimizing"
-    if code == 50:
-        return "Running"
-    if code < 59:
-        return "Entering Align mode"
-    if code == 60:
-        return "In Align mode"
-    if code < 69:
-        return "Exiting Align mode"
-    return "INVALID STATE"
-
-
 class LaserControlPanel(QWidget):
     """Combined panel with laser power, main shutter, and 1040nm shutter controls."""
 
@@ -174,4 +156,4 @@ class LaserControlPanel(QWidget):
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == "Laser State":
-            self._laser_state.setText(_state_text(int(value)))
+            self._laser_state.setText(value)
