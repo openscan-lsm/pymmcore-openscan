@@ -157,3 +157,4 @@ class LaserControlPanel(QWidget):
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == "Laser State":
             self._laser_state.setText(value)
+            self.laser_button.setEnabled(not value.startswith("Initializing"))
