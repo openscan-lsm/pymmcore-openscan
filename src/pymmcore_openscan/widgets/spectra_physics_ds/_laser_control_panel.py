@@ -75,11 +75,13 @@ class LaserControlPanel(QWidget):
         )
         self.main_shutter_button.on_text = "Main"
         self.main_shutter_button.off_text = "Main"
-        self.shutter_1040_button = ShutterButton(
-            _SHUTTER_1040_DEVICE, mmcore=self._mmcore
-        )
-        self.shutter_1040_button.on_text = "1040nm"
-        self.shutter_1040_button.off_text = "1040nm"
+        self.shutter_1040_button: ShutterButton | None = None
+        if _SHUTTER_1040_DEVICE in self._mmcore.getLoadedDevices():
+            self.shutter_1040_button = ShutterButton(
+                _SHUTTER_1040_DEVICE, mmcore=self._mmcore
+            )
+            self.shutter_1040_button.on_text = "1040nm"
+            self.shutter_1040_button.off_text = "1040nm"
 
         main_layout = QVBoxLayout(self)
 
@@ -112,17 +114,19 @@ class LaserControlPanel(QWidget):
 
         shutter_group = QGroupBox("Shutters")
         shutter_layout = QGridLayout(shutter_group)
+        colspan = 2 if self.shutter_1040_button is not None else 1
         shutter_layout.addWidget(
-            self._shutter_icon, 1, 0, 1, 2, Qt.AlignmentFlag.AlignHCenter
+            self._shutter_icon, 1, 0, 1, colspan, Qt.AlignmentFlag.AlignHCenter
         )
         shutter_layout.addWidget(
             self.main_shutter_button, 0, 0, Qt.AlignmentFlag.AlignHCenter
         )
-        shutter_layout.addWidget(
-            self.shutter_1040_button, 0, 1, Qt.AlignmentFlag.AlignHCenter
-        )
         self.main_shutter_button.toggled.connect(self._update_shutter_icon)
-        self.shutter_1040_button.toggled.connect(self._update_shutter_icon)
+        if self.shutter_1040_button is not None:
+            shutter_layout.addWidget(
+                self.shutter_1040_button, 0, 1, Qt.AlignmentFlag.AlignHCenter
+            )
+            self.shutter_1040_button.toggled.connect(self._update_shutter_icon)
         main_layout.addWidget(shutter_group)
 
         # Wavelength group
@@ -158,7 +162,9 @@ class LaserControlPanel(QWidget):
         return _render_svg(data)
 
     def _update_shutter_icon(self) -> None:
-        if self.main_shutter_button.isChecked() or self.shutter_1040_button.isChecked():
+        if self.main_shutter_button.isChecked():
+            self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
+        elif (btn := self.shutter_1040_button) and btn.isChecked():
             self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
         else:
             self._shutter_icon.setPixmap(self._inactive_laser_pixmap())
