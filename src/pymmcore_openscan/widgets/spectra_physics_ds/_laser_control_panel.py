@@ -51,7 +51,11 @@ def _render_svg(data: bytes) -> QPixmap:
     return pixmap
 
 
-_STATE_PROPS = [(_DEVICE_NAME, "Laser State"), (_DEVICE_NAME, "Pulsing")]
+_STATE_PROPS = [
+    (_DEVICE_NAME, "Laser State"),
+    (_DEVICE_NAME, "Pulsing"),
+    (_DEVICE_NAME, "Laser Power (W)"),
+]
 
 
 class LaserControlPanel(QWidget):
@@ -84,6 +88,8 @@ class LaserControlPanel(QWidget):
         self._pulsing_indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._set_pulsing(False)
 
+        self._laser_power = QLabel("N/A")
+
         laser_group = QGroupBox("Laser")
         laser_group.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
@@ -94,6 +100,7 @@ class LaserControlPanel(QWidget):
         top_row.addWidget(self._pulsing_indicator, stretch=1)
         laser_form = QFormLayout()
         laser_form.addRow("State:", self._laser_state)
+        laser_form.addRow("Power:", self._laser_power)
         laser_group_layout.addLayout(top_row)
         laser_group_layout.addLayout(laser_form)
         laser_group_layout.addWidget(PowerBarWidget(mmcore=self._mmcore))
@@ -179,3 +186,5 @@ class LaserControlPanel(QWidget):
             self.laser_button.setEnabled(not value.startswith("Initializing"))
         elif prop == "Pulsing":
             self._set_pulsing(value == "1")
+        elif prop == "Laser Power (W)":
+            self._laser_power.setText(f"{float(value):.2f} W")
