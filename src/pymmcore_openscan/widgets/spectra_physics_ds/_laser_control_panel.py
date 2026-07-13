@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from pymmcore_plus import CMMCorePlus
@@ -172,7 +173,8 @@ class LaserControlPanel(QWidget):
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == "Laser State":
-            self._laser_state.setText(value)
+            display = re.sub(r"\s*\(\d+\)$", "", value)
+            self._laser_state.setText(display)
             self._laser_state.setToolTip(value)
             self.laser_button.setEnabled(not value.startswith("Initializing"))
         elif prop == "Pulsing":
