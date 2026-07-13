@@ -50,7 +50,7 @@ def _render_svg(data: bytes) -> QPixmap:
     return pixmap
 
 
-_STATE_PROPS = [(_DEVICE_NAME, "Laser State")]
+_STATE_PROPS = [(_DEVICE_NAME, "Laser State"), (_DEVICE_NAME, "Pulsing")]
 
 
 class LaserControlPanel(QWidget):
@@ -79,6 +79,9 @@ class LaserControlPanel(QWidget):
         main_layout = QVBoxLayout(self)
 
         self._laser_state = QElidingLabel("N/A")
+        self._pulsing_indicator = QLabel("Pulsing")
+        self._pulsing_indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._set_pulsing(False)
 
         laser_group = QGroupBox("Laser")
         laser_group.setSizePolicy(
@@ -86,14 +89,12 @@ class LaserControlPanel(QWidget):
         )
         laser_group_layout = QVBoxLayout(laser_group)
         top_row = QHBoxLayout()
+        top_row.addWidget(self.laser_button, stretch=0)
+        top_row.addWidget(self._pulsing_indicator, stretch=1)
         laser_form = QFormLayout()
         laser_form.addRow("State:", self._laser_state)
-        top_row.addLayout(laser_form, stretch=1)
-        top_row.addWidget(
-            self.laser_button,
-            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight,
-        )
         laser_group_layout.addLayout(top_row)
+        laser_group_layout.addLayout(laser_form)
         laser_group_layout.addWidget(PowerBarWidget(mmcore=self._mmcore))
         main_layout.addWidget(laser_group, stretch=0)
 
@@ -154,7 +155,25 @@ class LaserControlPanel(QWidget):
         else:
             self._shutter_icon.setPixmap(self._inactive_laser_pixmap())
 
+    def _set_pulsing(self, pulsing: bool) -> None:
+        p = self._pulsing_indicator.palette()
+        if pulsing:
+            text = p.color(QPalette.ColorRole.HighlightedText).name()
+            bg = p.color(QPalette.ColorRole.Highlight).name()
+            self._pulsing_indicator.setStyleSheet(
+                f"color: {text}; background-color: {bg}; border-radius: 4px;"
+            )
+        else:
+            text = p.color(QPalette.ColorRole.Mid).name()
+            border = p.color(QPalette.ColorRole.Mid).name()
+            self._pulsing_indicator.setStyleSheet(
+                f"color: {text}; border: 1px solid {border}; border-radius: 4px;"
+            )
+
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == "Laser State":
             self._laser_state.setText(value)
+            self._laser_state.setToolTip(value)
             self.laser_button.setEnabled(not value.startswith("Initializing"))
+        elif prop == "Pulsing":
+            self._set_pulsing(value == "1")
