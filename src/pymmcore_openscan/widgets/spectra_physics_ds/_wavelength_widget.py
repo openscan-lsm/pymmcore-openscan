@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus, Device
 from qtpy.QtCore import Qt, QTimer
+from superqt.utils import signals_blocked
 
 if TYPE_CHECKING:
     from qtpy.QtCore import QPoint
@@ -24,6 +25,8 @@ from pymmcore_openscan._settings import Settings
 from ._utils import _POLL_INTERVAL_MS
 
 _DEVICE_NAME = "InsightDS+ Main"
+_TARGET_PROP = "Target Wavelength (nm)"
+_ACTUAL_PROP = "Actual Wavelength (nm)"
 
 
 class WavelengthWidget(QWidget):
@@ -68,6 +71,9 @@ class WavelengthWidget(QWidget):
             self._insert_preset_button(wl)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
+        self._mmcore.events.devicePropertyChanged(_DEVICE_NAME, _TARGET_PROP).connect(
+            self._on_property_change
+        )
         self._try_enable()
 
     def _try_enable(self) -> None:
@@ -81,7 +87,7 @@ class WavelengthWidget(QWidget):
         if self._dev:
             # Enable the widget
             self.setEnabled(True)
-            self._target.setValue(int(self._dev.getProperty("Target Wavelength (nm)")))
+            self._target.setValue(int(self._dev.getProperty(_TARGET_PROP)))
             self._poll_timer.start()
         else:
             # Disable the widget
@@ -89,18 +95,22 @@ class WavelengthWidget(QWidget):
             self._target.setValue(0)
             self._poll_timer.stop()
 
+    def _on_property_change(self, new_value: str) -> None:
+        if self._dev is None:
+            return
+        with signals_blocked(self._target):
+            self._target.setValue(int(new_value))
+
     def _on_target_changed(self) -> None:
         if self._dev is None:
             return
-        self._dev.setProperty("Target Wavelength (nm)", str(self._target.value()))
+        self._dev.setProperty(_TARGET_PROP, str(self._target.value()))
 
     def _poll_actual(self) -> None:
         if self._dev is None:
             return
         try:
-            val = float(
-                self._mmcore.getProperty(_DEVICE_NAME, "Actual Wavelength (nm)")
-            )
+            val = float(self._mmcore.getProperty(_DEVICE_NAME, _ACTUAL_PROP))
             self._actual.setText(f"{val:g} nm")
         except Exception:
             pass

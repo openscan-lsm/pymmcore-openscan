@@ -7,6 +7,7 @@ from pymmcore_plus import CMMCorePlus, Device
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import QApplication
 from superqt import QIconifyIcon
+from superqt.utils import signals_blocked
 
 if TYPE_CHECKING:
     from qtpy.QtWidgets import QWidget
@@ -14,6 +15,8 @@ if TYPE_CHECKING:
 from ._utils import _DEVICE_NAME, SafetyButton
 
 _LASER_SVG = Path(__file__).parent / "_assets" / "laser-symbol.svg"
+
+_PROP_NAME = "Pump Laser"
 
 
 class LaserButton(SafetyButton):
@@ -38,6 +41,9 @@ class LaserButton(SafetyButton):
 
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
+        self._mmcore.events.devicePropertyChanged(_DEVICE_NAME, _PROP_NAME).connect(
+            self._on_property_change
+        )
         self._try_enable()
 
     def _try_enable(self) -> None:
@@ -45,10 +51,14 @@ class LaserButton(SafetyButton):
         self.setEnabled(enabled)
         self._dev = self._mmcore.getDeviceObject(_DEVICE_NAME) if enabled else None
 
+    def _on_property_change(self, new_value: str) -> None:
+        with signals_blocked(self):
+            self.setChecked(new_value == "On")
+
     def _on_toggled(self, checked: bool) -> None:
         if self.isEnabled() and self._dev:
             try:
-                self._dev.setProperty("Pump Laser", "On" if checked else "Off")
+                self._dev.setProperty(_PROP_NAME, "On" if checked else "Off")
             except RuntimeError as e:
                 # FIXME: There has got to be a better way to do this
                 self._state = self._OFF
