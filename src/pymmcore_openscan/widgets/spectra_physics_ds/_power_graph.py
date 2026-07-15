@@ -112,9 +112,10 @@ class LaserPowerGraph(QGroupBox):
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
+        self._powers.clear()
+        self._curve.setData(list(self._times), list(self._powers))
         if enabled:
             self._times.clear()
-            self._powers.clear()
             self._timer.start()
         else:
             self._timer.stop()
