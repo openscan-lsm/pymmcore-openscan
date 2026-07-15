@@ -125,6 +125,7 @@ class PowerBarWidget(QWidget):
             self._worker.stop()
             self._thread.quit()
             self._thread.wait()
+            self._bar.set_value(0.0)
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == _POWER_PROP:
