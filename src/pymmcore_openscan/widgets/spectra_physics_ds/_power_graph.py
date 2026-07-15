@@ -5,7 +5,7 @@ from time import time
 
 import pyqtgraph as pg
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import QEvent, QTimer
+from qtpy.QtCore import QEvent, QThread
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import (
     QGroupBox,
@@ -17,7 +17,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ._utils import _DEVICE_NAME, _POLL_INTERVAL_MS
+from ._utils import _DEVICE_NAME, _PollingWorker
 
 _POWER_PROP = "Laser Power (W)"
 
@@ -77,9 +77,10 @@ class LaserPowerGraph(QGroupBox):
         layout.addWidget(self._plot)
         layout.addLayout(controls)
 
-        self._timer = QTimer()
-        self._timer.setInterval(_POLL_INTERVAL_MS)
-        self._timer.timeout.connect(self._poll)
+        self._worker = _PollingWorker(self._mmcore, [(_DEVICE_NAME, _POWER_PROP)])
+        self._thread = QThread()
+        self._worker.moveToThread(self._thread)
+        self._worker.updated.connect(self._on_updated)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
@@ -112,13 +113,17 @@ class LaserPowerGraph(QGroupBox):
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
+        self._times.clear()
         self._powers.clear()
-        self._curve.setData(list(self._times), list(self._powers))
+        self._curve.setData([], [])
         if enabled:
-            self._times.clear()
-            self._timer.start()
+            if not self._thread.isRunning():
+                self._thread.start()
+                self._worker.start()
         else:
-            self._timer.stop()
+            self._worker.stop()
+            self._thread.quit()
+            self._thread.wait()
 
     def changeEvent(self, a0: QEvent | None) -> None:
         super().changeEvent(a0)
@@ -126,10 +131,12 @@ class LaserPowerGraph(QGroupBox):
             highlight = self.palette().color(QPalette.ColorRole.Highlight)
             self._curve.setPen(pg.mkPen(highlight, width=2))
 
-    def _poll(self) -> None:
+    def _on_updated(self, _: str, prop: str, value: str) -> None:
+        if prop != _POWER_PROP:
+            return
         try:
-            power = float(self._mmcore.getProperty(_DEVICE_NAME, _POWER_PROP))
-        except Exception:
+            power = float(value)
+        except ValueError:
             return
         self._times.append(time())
         self._powers.append(power)

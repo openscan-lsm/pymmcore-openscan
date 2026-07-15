@@ -174,6 +174,8 @@ class _PollingWorker(QObject):
     """
 
     updated = Signal(str, str, str)  # device_name, property_name, value
+    # This signal allows us to stop the timer from a different thread
+    _stop_requested = Signal()
 
     def __init__(
         self,
@@ -184,15 +186,17 @@ class _PollingWorker(QObject):
         super().__init__()
         self._mmcore = mmcore
         self._props = props
-        self._timer = QTimer()
-        self._timer.setInterval(interval_ms)
-        self._timer.timeout.connect(self._poll)
+        self._timeout = interval_ms
 
     def start(self) -> None:
+        self._timer = QTimer()
+        self._timer.setInterval(self._timeout)
+        self._timer.timeout.connect(self._poll)
+        self._stop_requested.connect(self._timer.stop)
         self._timer.start()
 
     def stop(self) -> None:
-        self._timer.stop()
+        self._stop_requested.emit()
 
     def _poll(self) -> None:
         for device, prop in self._props:
