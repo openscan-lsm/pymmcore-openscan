@@ -70,18 +70,18 @@ class LaserControlPanel(QWidget):
         self._mmcore = mmcore or CMMCorePlus.instance()
 
         self.laser_button = LaserButton(mmcore=self._mmcore)
-        self.main_shutter_button = ShutterButton(
+
+        self.shutter_main_button = ShutterButton(
             _MAIN_SHUTTER_DEVICE, mmcore=self._mmcore
         )
-        self.main_shutter_button.on_text = "Main"
-        self.main_shutter_button.off_text = "Main"
-        self.shutter_1040_button: ShutterButton | None = None
-        if _SHUTTER_1040_DEVICE in self._mmcore.getLoadedDevices():
-            self.shutter_1040_button = ShutterButton(
-                _SHUTTER_1040_DEVICE, mmcore=self._mmcore
-            )
-            self.shutter_1040_button.on_text = "1040nm"
-            self.shutter_1040_button.off_text = "1040nm"
+        self.shutter_main_button.on_text = "Main"
+        self.shutter_main_button.off_text = "Main"
+
+        self.shutter_1040_button = ShutterButton(
+            _SHUTTER_1040_DEVICE, mmcore=self._mmcore
+        )
+        self.shutter_1040_button.on_text = "1040nm"
+        self.shutter_1040_button.off_text = "1040nm"
 
         main_layout = QVBoxLayout(self)
 
@@ -112,22 +112,17 @@ class LaserControlPanel(QWidget):
         self._shutter_icon = QLabel()
         self._shutter_icon.setPixmap(self._inactive_laser_pixmap())
 
-        shutter_group = QGroupBox("Shutters")
-        shutter_layout = QGridLayout(shutter_group)
-        colspan = 2 if self.shutter_1040_button is not None else 1
-        shutter_layout.addWidget(
-            self._shutter_icon, 1, 0, 1, colspan, Qt.AlignmentFlag.AlignHCenter
+        self._shutter_group = QGroupBox("Shutters")
+        self._shutter_layout = QGridLayout(self._shutter_group)
+        self._shutter_layout.addWidget(
+            self.shutter_main_button, 0, 0, Qt.AlignmentFlag.AlignHCenter
         )
-        shutter_layout.addWidget(
-            self.main_shutter_button, 0, 0, Qt.AlignmentFlag.AlignHCenter
+        self.shutter_main_button.toggled.connect(self._update_shutter_icon)
+        self._shutter_layout.addWidget(
+            self.shutter_1040_button, 0, 1, Qt.AlignmentFlag.AlignHCenter
         )
-        self.main_shutter_button.toggled.connect(self._update_shutter_icon)
-        if self.shutter_1040_button is not None:
-            shutter_layout.addWidget(
-                self.shutter_1040_button, 0, 1, Qt.AlignmentFlag.AlignHCenter
-            )
-            self.shutter_1040_button.toggled.connect(self._update_shutter_icon)
-        main_layout.addWidget(shutter_group)
+        self.shutter_1040_button.toggled.connect(self._update_shutter_icon)
+        main_layout.addWidget(self._shutter_group)
 
         # Wavelength group
         wavelength_group = QGroupBox("Wavelength")
@@ -145,16 +140,30 @@ class LaserControlPanel(QWidget):
 
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
-        if not enabled:
-            self._laser_state.setText("N/A")
         if enabled:
             if not self._thread.isRunning():
                 self._thread.start()
                 self._worker.start()
         else:
+            self._laser_state.setText("N/A")
+            self._laser_power.setText("N/A")
+            self._set_pulsing(False)
+
             self._worker.stop()
             self._thread.quit()
             self._thread.wait()
+
+        # Hide the 1040nm shutter button if the device is unavailable
+        # i.e. we want to hide it only when the hub is loaded and the 1040nm shutter is
+        # not
+        is_1040_unavailable = (
+            enabled and _SHUTTER_1040_DEVICE not in self._mmcore.getLoadedDevices()
+        )
+        self.shutter_1040_button.setVisible(not is_1040_unavailable)
+        colspan = 2 if not is_1040_unavailable else 1
+        self._shutter_layout.addWidget(
+            self._shutter_icon, 1, 0, 1, colspan, Qt.AlignmentFlag.AlignHCenter
+        )
 
     def _inactive_laser_pixmap(self) -> QPixmap:
         color = self.palette().color(QPalette.ColorRole.Mid).name()
@@ -162,7 +171,7 @@ class LaserControlPanel(QWidget):
         return _render_svg(data)
 
     def _update_shutter_icon(self) -> None:
-        if self.main_shutter_button.isChecked():
+        if self.shutter_main_button.isChecked():
             self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
         elif (btn := self.shutter_1040_button) and btn.isChecked():
             self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
