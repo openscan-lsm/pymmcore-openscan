@@ -16,12 +16,10 @@ _POLL_INTERVAL_MS = 500
 
 
 class SafetyButton(QPushButton):
-    """A QPushButton that toggles ON/OFF only after being held for a full countdown.
+    """A QPushButton that toggles ON only after being held for a full countdown.
 
     Useful when you want to make sure that the user really intends to toggle the button.
-
     Press and hold to start the countdown; release early to cancel.
-    Subclasses can override ``_refresh_stable`` to customise the ON/OFF display.
     """
 
     _OFF = "off"
@@ -149,7 +147,7 @@ class SafetyButton(QPushButton):
         self._refresh()
 
     def _refresh(self) -> None:
-        self.setChecked(self._state == self._ON)
+        super().setChecked(self._state == self._ON)
         text = {
             self._ON: self.on_text,
             self._OFF: self.off_text,
@@ -162,6 +160,11 @@ class SafetyButton(QPushButton):
             self._COUNTING: self.counting_icon,
         }
         self.setIcon(icon[self._state])
+
+    def setChecked(self, checked: bool) -> None:
+        """Override setChecked to update the state accordingly."""
+        self._state = self._ON if checked else self._OFF
+        self._refresh()
 
 
 class _PollingWorker(QObject):

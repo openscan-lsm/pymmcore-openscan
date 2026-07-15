@@ -60,6 +60,13 @@ class ShutterButton(SafetyButton):
     def _on_toggled(self, checked: bool) -> None:
         if self.isEnabled() and self._dev:
             if checked:
-                self._dev.open()
+                try:
+                    self._dev.open()
+                except RuntimeError as e:
+                    # The device adapter prevents opening the shutter before turning on
+                    # the laser
+                    with signals_blocked(self):
+                        self.setChecked(False)
+                    raise e
             else:
                 self._dev.close()

@@ -49,18 +49,21 @@ class LaserButton(SafetyButton):
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
-        self._dev = self._mmcore.getDeviceObject(_DEVICE_NAME) if enabled else None
+
+        self._dev = None
+        if enabled:
+            self._dev = self._mmcore.getDeviceObject(_DEVICE_NAME)
+            self.setChecked(self._dev.getProperty(_PROP_NAME) == "On")
 
     def _on_property_change(self, new_value: str) -> None:
         with signals_blocked(self):
             self.setChecked(new_value == "On")
 
     def _on_toggled(self, checked: bool) -> None:
-        if self.isEnabled() and self._dev:
+        if self._dev:
             try:
                 self._dev.setProperty(_PROP_NAME, "On" if checked else "Off")
             except RuntimeError as e:
-                # FIXME: There has got to be a better way to do this
-                self._state = self._OFF
-                self._refresh()
+                # The device adapter prevents turning the laser prematurely
+                self.setChecked(False)
                 raise e
