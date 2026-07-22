@@ -10,10 +10,8 @@ from pymmcore_openscan.widgets import (
     SPCRateGraph,
 )
 from pymmcore_openscan.widgets.spectra_physics_ds import (
-    DiodeWidget,
     LaserControlPanel,
     LaserDiagnosticsPanel,
-    LaserPowerGraph,
 )
 
 
@@ -93,17 +91,9 @@ def _create_openscan_params(parent: QWidget) -> QWidget:
     return OpenScanParameters(parent=parent, mmcore=mmcore)
 
 
-def _create_insight_ds_diode(parent: QWidget) -> QWidget:
-    return DiodeWidget(parent=parent, mmcore=CMMCorePlus.instance())
-
-
 def _create_insight_ds_laser_control(parent: QWidget) -> QWidget:
     return LaserControlPanel(parent=parent, mmcore=CMMCorePlus.instance())
 
 
 def _create_insight_ds_diagnostics(parent: QWidget) -> QWidget:
     return LaserDiagnosticsPanel(parent=parent, mmcore=CMMCorePlus.instance())
-
-
-def _create_insight_ds_power_graph(parent: QWidget) -> QWidget:
-    return LaserPowerGraph(parent=parent, mmcore=CMMCorePlus.instance())
