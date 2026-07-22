@@ -34,10 +34,6 @@ class _DiodePanel(QGroupBox):
         layout.addRow("Temperature:", self._temperature)
         layout.addRow("Cumulative Hours:", self._hours)
 
-    def set_enabled(self, enabled: bool) -> None:
-        for sb in (self._current, self._temperature, self._hours):
-            sb.setEnabled(enabled)
-
     def update_field(self, field: str, value: float) -> None:
         if field == "Current (A)":
             self._current.setText(f"{value:.3f} A")
@@ -65,6 +61,7 @@ class DiodeWidget(QWidget):
 
         self._worker = _PollingWorker(self._mmcore, _DIODE_PROPS)
         self._thread = QThread()
+        self._worker.moveToThread(self._thread)
         self._worker.updated.connect(self._on_updated)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
@@ -72,8 +69,7 @@ class DiodeWidget(QWidget):
 
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
-        self._diode1.set_enabled(enabled)
-        self._diode2.set_enabled(enabled)
+        self.setEnabled(enabled)
         if enabled:
             if not self._thread.isRunning():
                 self._thread.start()
