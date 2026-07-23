@@ -32,6 +32,11 @@ class CodeType(enum.Enum):
     FAULT = enum.auto()
 
 
+_COLORS = {
+    CodeType.FAULT: QColor(220, 80, 80),
+    CodeType.WARNING: QColor(210, 160, 40),
+}
+
 # Code map derived from Insight DS+ manual, Appendix B.
 _HISTORY_CODES: dict[int, tuple[CodeType, str]] = {
     0: (CodeType.STATUS, "Normal operation"),
@@ -57,7 +62,7 @@ _EMPTY_CODE = "000"
 
 
 class HistoryBufferPanel(QGroupBox):
-    """Snapshot view of the laser history buffer (16 slots, most recent first)."""
+    """Formatted view of the laser history buffer (16 slots, most recent first)."""
 
     def __init__(
         self,
@@ -66,22 +71,27 @@ class HistoryBufferPanel(QGroupBox):
     ) -> None:
         super().__init__("History Buffer", parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
+        self.setToolTip("The last 16 status codes from the laser, most recent first.")
 
+        ## -- WIDGETS -- ##
         self._table = QTableWidget(_NUM_SLOTS, 2)
         self._table.setHorizontalHeaderLabels(["Code", "Description"])
+        # Stretch the description column to fill the available space
         if (h_header := self._table.horizontalHeader()) is not None:
             h_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
             h_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        # Hide the vertical header
         if (v_header := self._table.verticalHeader()) is not None:
             v_header.setVisible(False)
+        # Prevent editing, selecting, focusing the table
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self._table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self._last_read_label = QLabel("Last read: never")
         self._refresh_btn = QPushButton("Refresh")
-        self._refresh_btn.clicked.connect(self._refresh)
 
+        ## -- LAYOUT -- ##
         bottom_row = QHBoxLayout()
         bottom_row.addWidget(self._last_read_label)
         bottom_row.addStretch()
@@ -91,6 +101,8 @@ class HistoryBufferPanel(QGroupBox):
         layout.addWidget(self._table)
         layout.addLayout(bottom_row)
 
+        ## -- SETUP -- ##
+        self._refresh_btn.clicked.connect(self._refresh)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
 
@@ -104,27 +116,27 @@ class HistoryBufferPanel(QGroupBox):
         raw = self._mmcore.getProperty(_DEVICE_NAME, _HISTORY_PROP)
         self._populate(raw)
         self._last_read_label.setText(
-            f"Last read: {datetime.now().strftime('%H:%M:%S')}"
+            f"Last read: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         )
 
     def _populate(self, raw: str) -> None:
-        cleaned = raw.replace(" ", "")
-        codes = [cleaned[i : i + 3] for i in range(0, len(cleaned), 3)]
-        codes = (codes + [_EMPTY_CODE] * _NUM_SLOTS)[:_NUM_SLOTS]
+        """Populate the table from the raw history buffer string.
 
-        _COLORS = {
-            CodeType.FAULT: QColor(220, 80, 80),
-            CodeType.WARNING: QColor(210, 160, 40),
-        }
-        for row, code in enumerate(codes):
+        Parameters
+        ----------
+        raw: str
+            The raw history buffer string, formatted as a string, with 16 3-digit
+            character codes, separated by spaces.
+            E.g. "000 066 000 000 ..."
+        """
+        for row, code in enumerate(raw.split()):
             int_code = int(code)
-            entry = _HISTORY_CODES.get(
+            code_type, desc = _HISTORY_CODES.get(
                 int_code, (CodeType.WARNING, f"Unknown code: {int_code}")
             )
-            desc = entry[1] if entry else ""
             code_item = QTableWidgetItem(code)
             desc_item = QTableWidgetItem(desc)
-            if entry and (color := _COLORS.get(entry[0])):
+            if color := _COLORS.get(code_type):
                 code_item.setForeground(color)
                 desc_item.setForeground(color)
             self._table.setItem(row, 0, code_item)
