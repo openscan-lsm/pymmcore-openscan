@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus, Device
@@ -13,8 +12,6 @@ if TYPE_CHECKING:
     from qtpy.QtWidgets import QWidget
 
 from ._utils import _DEVICE_NAME, SafetyButton
-
-_LASER_SVG = Path(__file__).parent / "_assets" / "laser-symbol.svg"
 
 _PROP_NAME = "Pump Laser"
 
@@ -65,5 +62,6 @@ class LaserButton(SafetyButton):
                 self._dev.setProperty(_PROP_NAME, "On" if checked else "Off")
             except RuntimeError as e:
                 # The device adapter prevents turning the laser prematurely
-                self.setChecked(False)
+                with signals_blocked(self):
+                    self.setChecked(False)
                 raise e
