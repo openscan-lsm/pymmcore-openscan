@@ -126,7 +126,12 @@ class _LaserGroupBox(QGroupBox):
         elif prop == "Pulsing":
             self._set_pulsing(value == "1")
         elif prop == "Laser Power (W)":
-            self._laser_power.setText(f"{float(value):.2f} W")
+            try:
+                float_value = float(value)
+            except ValueError:
+                self._laser_power.setText("N/A")
+            else:
+                self._laser_power.setText(f"{float_value:.2f} W")
 
     def _set_pulsing(self, pulsing: bool) -> None:
         p = self._pulsing_indicator.palette()
