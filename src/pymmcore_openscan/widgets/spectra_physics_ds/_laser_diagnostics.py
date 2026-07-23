@@ -106,6 +106,6 @@ class LaserDiagnosticsPanel(QGroupBox):
         if prop == "Warmup Percentage (%)":
             self._warmup.setValue(int(value))
         elif prop == "Relative Humidity (%)":
-            humidity = int(value)
-            self._humidity.setText(f"{humidity} %")
+            humidity = float(value)
+            self._humidity.setText(f"{humidity:.1f} %")
             self._humidity_warning.setVisible(humidity > _HUMIDITY_WARNING_THRESHOLD)
