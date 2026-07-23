@@ -97,6 +97,8 @@ class HistoryBufferPanel(QGroupBox):
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
+        if enabled:
+            self._refresh()
 
     def _refresh(self) -> None:
         raw = self._mmcore.getProperty(_DEVICE_NAME, _HISTORY_PROP)
