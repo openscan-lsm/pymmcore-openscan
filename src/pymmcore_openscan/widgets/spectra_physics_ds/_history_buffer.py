@@ -69,13 +69,11 @@ class HistoryBufferPanel(QGroupBox):
 
         self._table = QTableWidget(_NUM_SLOTS, 2)
         self._table.setHorizontalHeaderLabels(["Code", "Description"])
-        h_header = self._table.horizontalHeader()
-        assert h_header is not None
-        h_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        h_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        v_header = self._table.verticalHeader()
-        assert v_header is not None
-        v_header.setVisible(False)
+        if (h_header := self._table.horizontalHeader()) is not None:
+            h_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            h_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        if (v_header := self._table.verticalHeader()) is not None:
+            v_header.setVisible(False)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self._table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
