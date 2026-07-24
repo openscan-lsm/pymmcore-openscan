@@ -9,6 +9,10 @@ from pymmcore_openscan.widgets import (
     OpenScanParameters,
     SPCRateGraph,
 )
+from pymmcore_openscan.widgets.spectra_physics_ds import (
+    LaserControlPanel,
+    LaserDiagnosticsPanel,
+)
 
 
 def augment_pymmcore_gui() -> None:
@@ -49,6 +53,18 @@ def _get_action_infos() -> list[WidgetActionInfo]:
             icon="mynaui:scan",
             create_widget=_create_openscan_params,
         ),
+        WidgetActionInfo(
+            key="insight_ds_laser_control",
+            text="Insight DS+ Laser Control",
+            icon="game-icons:laser-warning",
+            create_widget=_create_insight_ds_laser_control,
+        ),
+        WidgetActionInfo(
+            key="insight_ds_diagnostics",
+            text="Insight DS+ Diagnostics",
+            icon="game-icons:laser-warning",
+            create_widget=_create_insight_ds_diagnostics,
+        ),
     ]
 
 
@@ -73,3 +89,11 @@ def _create_spc_rate_graph(parent: QWidget) -> QWidget:
 def _create_openscan_params(parent: QWidget) -> QWidget:
     mmcore = CMMCorePlus.instance()
     return OpenScanParameters(parent=parent, mmcore=mmcore)
+
+
+def _create_insight_ds_laser_control(parent: QWidget) -> QWidget:
+    return LaserControlPanel(parent=parent, mmcore=CMMCorePlus.instance())
+
+
+def _create_insight_ds_diagnostics(parent: QWidget) -> QWidget:
+    return LaserDiagnosticsPanel(parent=parent, mmcore=CMMCorePlus.instance())
