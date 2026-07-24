@@ -133,11 +133,11 @@ class SafetyButton(QPushButton):
         if self._state == self._COUNTING:
             self._countdown_timer.stop()
             self._state = self._source_state
-            # Undo the fixed size
-            self.setMinimumSize(0, 0)
-            # NOTE this number comes from the PyQt value for QWIDGETSIZE_MAX
-            self.setMaximumSize(16777215, 16777215)
-            self._refresh()
+        # Undo the fixed size
+        self.setMinimumSize(0, 0)
+        # NOTE this number comes from the PyQt value for QWIDGETSIZE_MAX
+        self.setMaximumSize(16777215, 16777215)
+        self._refresh()
 
     def _tick(self) -> None:
         self._remaining -= 1
