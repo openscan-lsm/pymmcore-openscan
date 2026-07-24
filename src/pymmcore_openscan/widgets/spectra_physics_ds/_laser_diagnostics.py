@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import QThread
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import (
     QApplication,
@@ -87,8 +86,6 @@ class LaserDiagnosticsPanel(QGroupBox):
 
         ## -- POLLING -- ##
         self._worker = _PollingWorker(self._mmcore, _PROPS)
-        self._thread = QThread()
-        self._worker.moveToThread(self._thread)
         self._worker.updated.connect(self._on_updated)
 
         ## -- INIT -- ##
@@ -99,13 +96,9 @@ class LaserDiagnosticsPanel(QGroupBox):
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
         if enabled:
-            if not self._thread.isRunning():
-                self._thread.start()
-                self._worker.start()
+            self._worker.start()
         else:
             self._worker.stop()
-            self._thread.quit()
-            self._thread.wait()
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == "Warmup Percentage (%)":

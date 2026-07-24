@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from pymmcore_plus import CMMCorePlus, Device
-from qtpy.QtCore import QByteArray, QRectF, QSize, Qt, QThread
+from qtpy.QtCore import QByteArray, QRectF, QSize, Qt
 from qtpy.QtGui import QPainter, QPalette, QPixmap
 from qtpy.QtSvg import QSvgRenderer
 from qtpy.QtWidgets import (
@@ -44,10 +44,6 @@ _ICON_ACTIVE_PATH = _ASSETS / "laser-symbol.svg"
 _ICON_INACTIVE_PATH = _ASSETS / "laser-symbol-inactive.svg"
 _ICON_SIZE = QSize(128, 128)
 
-_WAVELENGTH_TARGET_PROP = "Target Wavelength (nm)"
-_WAVELENGTH_ACTUAL_PROP = "Actual Wavelength (nm)"
-_WAVELENGTH_STATE_PROPS = [(_MAIN_SHUTTER_DEVICE, _WAVELENGTH_ACTUAL_PROP)]
-
 
 def _render_svg(data: bytes) -> QPixmap:
     pixmap = QPixmap(_ICON_SIZE)
@@ -64,15 +60,17 @@ def _render_svg(data: bytes) -> QPixmap:
     return pixmap
 
 
-_STATE_PROPS = [
-    (_DEVICE_NAME, "Laser State"),
-    (_DEVICE_NAME, "Pulsing"),
-    (_DEVICE_NAME, "Laser Power (W)"),
-]
-
-
 class _LaserGroupBox(QGroupBox):
     """Controls for laser power."""
+
+    _STATE_PROP = "Laser State"
+    _PULSING_PROP = "Pulsing"
+    _POWER_PROP = "Laser Power (W)"
+    _POLL_PROPS: ClassVar[list[tuple[str, str]]] = [
+        (_DEVICE_NAME, _STATE_PROP),
+        (_DEVICE_NAME, _PULSING_PROP),
+        (_DEVICE_NAME, _POWER_PROP),
+    ]
 
     def __init__(
         self,
@@ -83,9 +81,7 @@ class _LaserGroupBox(QGroupBox):
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
         self._mmcore = mmcore
-        self._worker = _PollingWorker(self._mmcore, _STATE_PROPS)
-        self._thread = QThread()
-        self._worker.moveToThread(self._thread)
+        self._worker = _PollingWorker(self._mmcore, self._POLL_PROPS)
         self._worker.updated.connect(self._on_updated)
 
         ## -- WIDGETS -- ##
@@ -118,14 +114,14 @@ class _LaserGroupBox(QGroupBox):
         self._try_enable()
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
-        if prop == "Laser State":
+        if prop == self._STATE_PROP:
             display = re.sub(r"\s*\(\d+\)$", "", value)
             self._laser_state.setText(display)
             self._laser_state.setToolTip(value)
             self.laser_button.setEnabled(not value.startswith("Initializing"))
-        elif prop == "Pulsing":
+        elif prop == self._PULSING_PROP:
             self._set_pulsing(value == "1")
-        elif prop == "Laser Power (W)":
+        elif prop == self._POWER_PROP:
             try:
                 float_value = float(value)
             except ValueError:
@@ -151,20 +147,12 @@ class _LaserGroupBox(QGroupBox):
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         if enabled:
-            if not self._thread.isRunning():
-                # Start worker thread
-                self._thread.start()
-                self._worker.start()
+            self._worker.start()
         else:
-            # Clear widgets
             self._laser_state.setText("N/A")
             self._laser_power.setText("N/A")
             self._set_pulsing(False)
-
-            # Stop worker thread
             self._worker.stop()
-            self._thread.quit()
-            self._thread.wait()
 
 
 class _ShutterGroupBox(QGroupBox):
@@ -237,6 +225,12 @@ class _ShutterGroupBox(QGroupBox):
 class _WavelengthGroupBox(QGroupBox):
     """Controls for tunable output wavelength."""
 
+    _TARGET_PROP = "Target Wavelength (nm)"
+    _ACTUAL_PROP = "Actual Wavelength (nm)"
+    _POLL_PROPS: ClassVar[list[tuple[str, str]]] = [
+        (_MAIN_SHUTTER_DEVICE, _ACTUAL_PROP),
+    ]
+
     def __init__(
         self,
         mmcore: CMMCorePlus,
@@ -272,15 +266,13 @@ class _WavelengthGroupBox(QGroupBox):
         layout.addWidget(self._presets_group)
 
         ## -- POLLING -- ##
-        self._worker = _PollingWorker(self._mmcore, _WAVELENGTH_STATE_PROPS)
-        self._thread = QThread()
-        self._worker.moveToThread(self._thread)
+        self._worker = _PollingWorker(self._mmcore, self._POLL_PROPS)
         self._worker.updated.connect(self._on_updated)
 
         ## -- SIGNALS -- ##
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._mmcore.events.devicePropertyChanged(
-            _MAIN_SHUTTER_DEVICE, _WAVELENGTH_TARGET_PROP
+            _MAIN_SHUTTER_DEVICE, self._TARGET_PROP
         ).connect(self._on_target_property_change)
         self._add_btn.clicked.connect(self._add_preset)
 
@@ -296,16 +288,12 @@ class _WavelengthGroupBox(QGroupBox):
 
         if self._dev:
             self.setEnabled(True)
-            self._target.setValue(int(self._dev.getProperty(_WAVELENGTH_TARGET_PROP)))
-            if not self._thread.isRunning():
-                self._thread.start()
-                self._worker.start()
+            self._target.setValue(int(self._dev.getProperty(self._TARGET_PROP)))
+            self._worker.start()
         else:
             self.setEnabled(False)
             self._target.setValue(0)
             self._worker.stop()
-            self._thread.quit()
-            self._thread.wait()
 
     def _on_target_property_change(self, new_value: str) -> None:
         if self._dev is None:
@@ -316,10 +304,10 @@ class _WavelengthGroupBox(QGroupBox):
     def _on_target_widget_changed(self) -> None:
         if self._dev is None:
             return
-        self._dev.setProperty(_WAVELENGTH_TARGET_PROP, str(self._target.value()))
+        self._dev.setProperty(self._TARGET_PROP, str(self._target.value()))
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
-        if prop == _WAVELENGTH_ACTUAL_PROP:
+        if prop == self._ACTUAL_PROP:
             self._actual.setText(f"{float(value):g} nm")
 
     def _add_preset(self) -> None:

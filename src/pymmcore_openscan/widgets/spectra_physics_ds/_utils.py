@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from qtpy.QtCore import QObject, QTimer, Signal
+from qtpy.QtCore import QObject, QThread, QTimer, Signal
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QPushButton, QWidget
 
@@ -171,10 +171,12 @@ class _PollingWorker(QObject):
     """Polls a configurable list of (device, property) pairs at a regular interval.
 
     Emits ``updated(device_name, property_name, value)`` for each pair on every tick.
+    Owns its own QThread; call ``start()`` / ``stop()`` to control polling.
+    Must not be given a QObject parent (required by moveToThread).
     """
 
     updated = Signal(str, str, str)  # device_name, property_name, value
-    # This signal allows us to stop the timer from a different thread
+    _start_requested = Signal()
     _stop_requested = Signal()
 
     def __init__(
@@ -187,16 +189,35 @@ class _PollingWorker(QObject):
         self._mmcore = mmcore
         self._props = props
         self._timeout = interval_ms
+        self._thread = QThread()
+        self._timer: QTimer | None = None
+        self._start_requested.connect(self._start)
+        self._stop_requested.connect(self._stop_timer)
+        self.moveToThread(self._thread)
 
     def start(self) -> None:
-        self._timer = QTimer()
+        if not self._thread.isRunning():
+            self._thread.start()
+        self._start_requested.emit()
+
+    def _start(self) -> None:
+        if self._timer is None:
+            self._timer = QTimer()
+        if self._timer.isActive():
+            # Already going
+            return
         self._timer.setInterval(self._timeout)
         self._timer.timeout.connect(self._poll)
-        self._stop_requested.connect(self._timer.stop)
         self._timer.start()
 
     def stop(self) -> None:
         self._stop_requested.emit()
+
+    def _stop_timer(self) -> None:
+        if self._timer:
+            self._timer.stop()
+        self._thread.quit()
+        self._thread.wait()
 
     def _poll(self) -> None:
         for device, prop in self._props:

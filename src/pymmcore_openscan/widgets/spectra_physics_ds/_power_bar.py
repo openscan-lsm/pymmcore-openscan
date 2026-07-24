@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import Qt, QThread
+from qtpy.QtCore import Qt
 from qtpy.QtGui import QPainter
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
@@ -107,8 +107,6 @@ class PowerBarWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._worker = _PollingWorker(self._mmcore, [(_DEVICE_NAME, _POWER_PROP)])
-        self._thread = QThread()
-        self._worker.moveToThread(self._thread)
         self._worker.updated.connect(self._on_updated)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
@@ -118,13 +116,9 @@ class PowerBarWidget(QWidget):
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
         if enabled:
-            if not self._thread.isRunning():
-                self._thread.start()
-                self._worker.start()
+            self._worker.start()
         else:
             self._worker.stop()
-            self._thread.quit()
-            self._thread.wait()
             self._bar.set_value(0.0)
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:

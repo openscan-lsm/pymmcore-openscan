@@ -5,7 +5,7 @@ from time import time
 
 import pyqtgraph as pg
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import QEvent, QThread
+from qtpy.QtCore import QEvent
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import (
     QGroupBox,
@@ -78,8 +78,6 @@ class LaserPowerGraph(QGroupBox):
         layout.addLayout(controls)
 
         self._worker = _PollingWorker(self._mmcore, [(_DEVICE_NAME, _POWER_PROP)])
-        self._thread = QThread()
-        self._worker.moveToThread(self._thread)
         self._worker.updated.connect(self._on_updated)
 
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
@@ -117,13 +115,9 @@ class LaserPowerGraph(QGroupBox):
         self._powers.clear()
         self._curve.setData([], [])
         if enabled:
-            if not self._thread.isRunning():
-                self._thread.start()
-                self._worker.start()
+            self._worker.start()
         else:
             self._worker.stop()
-            self._thread.quit()
-            self._thread.wait()
 
     def changeEvent(self, a0: QEvent | None) -> None:
         super().changeEvent(a0)
