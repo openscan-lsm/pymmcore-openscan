@@ -210,8 +210,12 @@ class _ShutterGroupBox(QGroupBox):
         is_1040_unavailable = (
             _DEVICE_NAME in loaded and _SHUTTER_1040_DEVICE not in loaded
         )
+        # TODO: Simulated device unloading is vulnerable to hangs when the 1040nm
+        # shutter button is currently hidden. If the real devices are also vulnerable to
+        # hangs, we may need to defer showing the button to the next event-loop tick via
+        # QTimer.singleShot(0, self.shutter_1040_button.show)
         self.shutter_1040_button.setVisible(not is_1040_unavailable)
-        colspan = 2 if not is_1040_unavailable else 1
+        colspan = 1 if is_1040_unavailable else 2
         self._layout.addWidget(
             self._shutter_icon, 1, 0, 1, colspan, Qt.AlignmentFlag.AlignHCenter
         )
