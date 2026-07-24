@@ -287,11 +287,9 @@ class _WavelengthGroupBox(QGroupBox):
             self._dev = self._mmcore.getDeviceObject(_MAIN_SHUTTER_DEVICE)
 
         if self._dev:
-            self.setEnabled(True)
             self._target.setValue(int(self._dev.getProperty(self._TARGET_PROP)))
             self._worker.start()
         else:
-            self.setEnabled(False)
             self._target.setValue(0)
             self._worker.stop()
 
@@ -373,3 +371,10 @@ class LaserControlPanel(QWidget):
         main_layout.addWidget(self._laser_group, stretch=0)
         main_layout.addWidget(self._shutter_group)
         main_layout.addWidget(self._wavelength_group)
+
+        self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
+        self._try_enable()
+
+    def _try_enable(self) -> None:
+        enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
+        self.setEnabled(enabled)
