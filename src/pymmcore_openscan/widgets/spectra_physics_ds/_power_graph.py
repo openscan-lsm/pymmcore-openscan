@@ -33,8 +33,9 @@ class LaserPowerGraph(QGroupBox):
         super().__init__("Laser Power", parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
 
-        self._times: deque[float] = deque()
-        self._powers: deque[float] = deque()
+        # TODO: We will likely want to be able to track power over longer time intervals
+        self._times: deque[float] = deque(maxlen=7200)
+        self._powers: deque[float] = deque(maxlen=7200)
         self._setting_range = False
 
         self._plot = pg.PlotWidget(axisItems={"bottom": pg.DateAxisItem()})
