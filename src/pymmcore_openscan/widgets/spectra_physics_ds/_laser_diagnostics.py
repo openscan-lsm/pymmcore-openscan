@@ -22,7 +22,7 @@ from ._utils import _DEVICE_NAME, _PollingWorker
 
 _HUMIDITY_WARNING_THRESHOLD = 5
 
-_DIAG_PROPS = [
+_PROPS = [
     (_DEVICE_NAME, "Warmup Percentage (%)"),
     (_DEVICE_NAME, "Relative Humidity (%)"),
 ]
@@ -39,6 +39,7 @@ class LaserDiagnosticsPanel(QGroupBox):
         super().__init__("Laser Diagnostics", parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
 
+        ## -- WIDGETS -- ##
         self._warmup = QProgressBar()
         self._warmup.setRange(0, 100)
         self._warmup.setFormat("%v%")
@@ -56,14 +57,16 @@ class LaserDiagnosticsPanel(QGroupBox):
         )
         self._humidity_warning.setToolTip("Humidity above 5% - check the purge unit!")
         self._humidity_warning.setVisible(False)
-        humidity_row = QHBoxLayout()
-        humidity_row.addWidget(self._humidity)
-        humidity_row.addWidget(self._humidity_warning)
-        humidity_row.addStretch()
 
         self._history = HistoryBufferPanel(mmcore=mmcore)
         self._diodes = DiodeWidget(mmcore=mmcore)
         self._laser_power = LaserPowerGraph(mmcore=mmcore)
+
+        ## -- LAYOUT -- ##
+        humidity_row = QHBoxLayout()
+        humidity_row.addWidget(self._humidity)
+        humidity_row.addWidget(self._humidity_warning)
+        humidity_row.addStretch()
 
         form = QFormLayout()
         form.addRow("System Warmup:", self._warmup)
@@ -82,11 +85,13 @@ class LaserDiagnosticsPanel(QGroupBox):
         layout = QVBoxLayout(self)
         layout.addLayout(columns)
 
-        self._worker = _PollingWorker(self._mmcore, _DIAG_PROPS)
+        ## -- POLLING -- ##
+        self._worker = _PollingWorker(self._mmcore, _PROPS)
         self._thread = QThread()
         self._worker.moveToThread(self._thread)
         self._worker.updated.connect(self._on_updated)
 
+        ## -- INIT -- ##
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
 
