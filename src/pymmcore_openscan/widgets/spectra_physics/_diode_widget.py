@@ -28,10 +28,26 @@ class _DiodePanel(QGroupBox):
         self._temperature = QLabel("N/A")
         self._hours = QLabel("N/A")
 
-        layout = QFormLayout(self)
-        layout.addRow("Current:", self._current)
-        layout.addRow("Temperature:", self._temperature)
-        layout.addRow("Cumulative Hours:", self._hours)
+        self._form_layout = QFormLayout(self)
+        self._form_layout.addRow("Current:", self._current)
+        self._form_layout.addRow("Temperature:", self._temperature)
+        self._form_layout.addRow("Cumulative Hours:", self._hours)
+
+    def refresh_visibility(self, mmcore: CMMCorePlus, device: str) -> bool:
+        """Hide rows for unavailable properties. Returns True if any are available."""
+        fields = [
+            ("Current (A)", self._current),
+            ("Temperature (C)", self._temperature),
+            ("Accumulated Hours", self._hours),
+        ]
+        any_visible = False
+        for field, widget in fields:
+            visible = mmcore.hasProperty(device, f"{self.title()} {field}")
+            if label := self._form_layout.labelForField(widget):
+                label.setVisible(visible)
+            widget.setVisible(visible)
+            any_visible = any_visible or visible
+        return any_visible
 
     def update_field(self, field: str, value: float) -> None:
         if field == "Current (A)":
@@ -68,6 +84,8 @@ class DiodeWidget(QWidget):
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
         if enabled:
+            for panel in (self._diode1, self._diode2):
+                panel.setVisible(panel.refresh_visibility(self._mmcore, _DEVICE_NAME))
             self._worker.start()
         else:
             self._worker.stop()

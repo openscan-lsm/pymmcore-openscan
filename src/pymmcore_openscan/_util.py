@@ -9,7 +9,7 @@ from pymmcore_openscan.widgets import (
     OpenScanParameters,
     SPCRateGraph,
 )
-from pymmcore_openscan.widgets.spectra_physics_ds import (
+from pymmcore_openscan.widgets.spectra_physics import (
     LaserControlPanel,
     LaserDiagnosticsPanel,
 )
@@ -55,15 +55,15 @@ def _get_action_infos() -> list[WidgetActionInfo]:
         ),
         WidgetActionInfo(
             key="insight_ds_laser_control",
-            text="Insight DS+ Laser Control",
+            text="Spectra-Physics Ultrafast Laser Control",
             icon="game-icons:laser-warning",
-            create_widget=_create_insight_ds_laser_control,
+            create_widget=_create_spectra_physics_laser_control,
         ),
         WidgetActionInfo(
             key="insight_ds_diagnostics",
-            text="Insight DS+ Diagnostics",
+            text="Spectra-Physics Ultrafast Laser Diagnostics",
             icon="game-icons:laser-warning",
-            create_widget=_create_insight_ds_diagnostics,
+            create_widget=_create_spectra_physics_diagnostics,
         ),
     ]
 
@@ -91,9 +91,9 @@ def _create_openscan_params(parent: QWidget) -> QWidget:
     return OpenScanParameters(parent=parent, mmcore=mmcore)
 
 
-def _create_insight_ds_laser_control(parent: QWidget) -> QWidget:
+def _create_spectra_physics_laser_control(parent: QWidget) -> QWidget:
     return LaserControlPanel(parent=parent, mmcore=CMMCorePlus.instance())
 
 
-def _create_insight_ds_diagnostics(parent: QWidget) -> QWidget:
+def _create_spectra_physics_diagnostics(parent: QWidget) -> QWidget:
     return LaserDiagnosticsPanel(parent=parent, mmcore=CMMCorePlus.instance())

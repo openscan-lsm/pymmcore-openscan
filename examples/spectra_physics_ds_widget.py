@@ -1,7 +1,7 @@
 from pymmcore_plus import CMMCorePlus
 from qtpy.QtWidgets import QApplication
 
-from pymmcore_openscan.widgets.spectra_physics_ds import (
+from pymmcore_openscan.widgets.spectra_physics import (
     LaserControlPanel,
     LaserDiagnosticsPanel,
 )
@@ -11,8 +11,13 @@ app = QApplication([])
 mmcore = CMMCorePlus().instance()
 
 try:
-    mmcore.loadDevice("InsightDS+", "SpectraPhysics", "InsightDS+")
-    mmcore.initializeDevice("InsightDS+")
+    mmcore.loadDevice("Laser", "SpectraPhysicsLasers", "Spectra-Physics Laser")
+    mmcore.initializeDevice("Laser")
+
+    mmcore.loadDevice(
+        "Main Shutter", "SpectraPhysicsLasers", "Spectra-Physics Main Shutter"
+    )
+    mmcore.initializeDevice("Main Shutter")
 except Exception:
     # Device not available - widgets will be shown disabled
     pass

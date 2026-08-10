@@ -20,6 +20,7 @@ from qtpy.QtWidgets import (
 
 from ._utils import _DEVICE_NAME
 
+_ID_PROP = "Device Identifier"
 _HISTORY_PROP = "Status Code Buffer"
 _NUM_SLOTS = 16
 
@@ -38,7 +39,7 @@ _COLORS = {
 }
 
 # Code map derived from Insight DS+ manual, Appendix B.
-_HISTORY_CODES: dict[int, tuple[CodeType, str]] = {
+_INSIGHT_HISTORY_CODES: dict[int, tuple[CodeType, str]] = {
     0: (CodeType.STATUS, "Normal operation"),
     56: (CodeType.FAULT, "Hardware watchdog expired"),
     66: (CodeType.FAULT, "Software watchdog expired"),
@@ -58,6 +59,37 @@ _HISTORY_CODES: dict[int, tuple[CodeType, str]] = {
     483: (CodeType.FAULT, "Low FTO power"),
 }
 
+# Code map derived from MaiTai DS+ manual, Appendix B.
+_MAITAI_HISTORY_CODES: dict[int, tuple[CodeType, str]] = {
+    0: (CodeType.STATUS, "Normal operation"),
+    56: (CodeType.FAULT, "Hardware watchdog expired"),
+    90: (CodeType.FAULT, "Diode temperature fault"),
+    91: (CodeType.WARNING, "Diode temperature warning"),
+    105: (CodeType.FAULT, "Body temperature fault"),
+    106: (CodeType.FAULT, "Tower temperature fault"),
+    119: (CodeType.FAULT, "User/Key interlock"),
+    120: (CodeType.FAULT, "Internal interlock"),
+    123: (CodeType.FAULT, "Boot Test Fail"),
+    131: (CodeType.WARNING, "Tower temperature warning"),
+    201: (CodeType.WARNING, "Current Near Limit"),
+    209: (CodeType.FAULT, "SHG Hardware Fault"),
+    421: (
+        CodeType.WARNING,
+        "Internal communication error between laser and power supply",
+    ),
+    444: (CodeType.STATUS, "P2 is between 10% and 90%"),
+    445: (CodeType.WARNING, "P2 (x or Y) is between 1% and 10% or between 90% and 99%"),
+    446: (CodeType.WARNING, "P2 (x or Y) is less than 1% or greater than 99%"),
+    452: (CodeType.STATUS, "M3 is inactive"),
+    453: (CodeType.STATUS, "M3 is active"),
+    454: (CodeType.STATUS, "M3 are between 10% and 90%"),
+    455: (CodeType.WARNING, "M3 (x or Y) is between 1% and 10% or between 90% and 99%"),
+    456: (CodeType.WARNING, "M3 (x or Y) is less than 1% or greater than 99%"),
+    462: (CodeType.STATUS, "IR loop is inactive"),
+    463: (CodeType.STATUS, "IR loop is active"),
+    502: (CodeType.FAULT, "Incorrect power supply firmware"),
+}
+
 _EMPTY_CODE = "000"
 
 
@@ -70,6 +102,7 @@ class HistoryBufferPanel(QGroupBox):
         mmcore: CMMCorePlus | None = None,
     ) -> None:
         super().__init__("History Buffer", parent)
+        self._model: str | None = None
         self._mmcore = mmcore or CMMCorePlus.instance()
         self.setToolTip("The last 16 status codes from the laser, most recent first.")
 
@@ -109,7 +142,15 @@ class HistoryBufferPanel(QGroupBox):
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
         self.setEnabled(enabled)
+
         if enabled:
+            id_str = self._mmcore.getProperty(_DEVICE_NAME, _ID_PROP)
+            if "insight" in id_str.lower():
+                self._model = "insight"
+            elif "maitai" in id_str.lower():
+                self._model = "maitai"
+            else:
+                self._model = None
             self._refresh()
 
     def _refresh(self) -> None:
@@ -131,7 +172,12 @@ class HistoryBufferPanel(QGroupBox):
         """
         for row, code in enumerate(raw.split()):
             int_code = int(code)
-            code_type, desc = _HISTORY_CODES.get(
+            code_map = (
+                _INSIGHT_HISTORY_CODES
+                if self._model == "insight"
+                else _MAITAI_HISTORY_CODES
+            )
+            code_type, desc = code_map.get(
                 int_code, (CodeType.WARNING, f"Unknown code: {int_code}")
             )
             code_item = QTableWidgetItem(code)
