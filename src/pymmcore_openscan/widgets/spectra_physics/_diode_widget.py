@@ -51,6 +51,8 @@ class DiodeWidget(QWidget):
         super().__init__(parent=parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
 
+        # TODO: Hide some of these panels when no properties are available
+        # (e.g. no diode 2 on MAITAI)
         self._diode1 = _DiodePanel("Diode 1")
         self._diode2 = _DiodePanel("Diode 2")
 
