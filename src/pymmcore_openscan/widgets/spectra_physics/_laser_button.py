@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 from ._utils import _DEVICE_NAME, SafetyButton
 
-_PROP_NAME = "Pump Laser"
+_PROP_NAME = "Laser"
 
 
 class LaserButton(SafetyButton):
