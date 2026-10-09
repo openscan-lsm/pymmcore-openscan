@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from pymmcore_plus import CMMCorePlus, Device
-from qtpy.QtCore import QByteArray, QRectF, QSize, Qt
-from qtpy.QtGui import QPainter, QPalette, QPixmap
-from qtpy.QtSvg import QSvgRenderer
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import (
     QFormLayout,
     QGridLayout,
@@ -38,26 +36,6 @@ from ._utils import (
 
 if TYPE_CHECKING:
     from qtpy.QtCore import QPoint
-
-_ASSETS = Path(__file__).parent / "_assets"
-_ICON_ACTIVE_PATH = _ASSETS / "laser-symbol.svg"
-_ICON_INACTIVE_PATH = _ASSETS / "laser-symbol-inactive.svg"
-_ICON_SIZE = QSize(128, 128)
-
-
-def _render_svg(data: bytes) -> QPixmap:
-    pixmap = QPixmap(_ICON_SIZE)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    renderer = QSvgRenderer(QByteArray(data))
-    scaled = renderer.defaultSize().scaled(
-        _ICON_SIZE, Qt.AspectRatioMode.KeepAspectRatio
-    )
-    x = (_ICON_SIZE.width() - scaled.width()) / 2
-    y = (_ICON_SIZE.height() - scaled.height()) / 2
-    painter = QPainter(pixmap)
-    renderer.render(painter, QRectF(x, y, scaled.width(), scaled.height()))
-    painter.end()
-    return pixmap
 
 
 class _LaserGroupBox(QGroupBox):
@@ -98,13 +76,13 @@ class _LaserGroupBox(QGroupBox):
         top_row.addWidget(self.laser_button, stretch=0)
         top_row.addWidget(self._pulsing_indicator, stretch=1)
 
-        laser_form = QFormLayout()
-        laser_form.addRow("State:", self._laser_state)
-        laser_form.addRow("Power:", self._laser_power)
+        self._laser_form = QFormLayout()
+        self._laser_form.addRow("State:", self._laser_state)
+        self._laser_form.addRow("Power:", self._laser_power)
 
         layout = QVBoxLayout(self)
         layout.addLayout(top_row)
-        layout.addLayout(laser_form)
+        layout.addLayout(self._laser_form)
         layout.addWidget(PowerBarWidget(mmcore=mmcore))
 
         ## -- INITIAL STATE -- ##
@@ -146,6 +124,11 @@ class _LaserGroupBox(QGroupBox):
 
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
+        # The laser state is nice to show if available
+        self._laser_form.setRowVisible(
+            self._laser_state,
+            enabled and self._mmcore.hasProperty(_DEVICE_NAME, self._STATE_PROP),
+        )
         if enabled:
             self._worker.start()
         else:
@@ -175,9 +158,6 @@ class _ShutterGroupBox(QGroupBox):
         self.shutter_1040_button.on_text = "1040nm"
         self.shutter_1040_button.off_text = "1040nm"
 
-        self._shutter_icon = QLabel()
-        self._shutter_icon.setPixmap(self._inactive_laser_pixmap())
-
         ## -- LAYOUT -- ##
         self._layout = QGridLayout(self)
         self._layout.addWidget(
@@ -188,8 +168,6 @@ class _ShutterGroupBox(QGroupBox):
         )
 
         ## -- SIGNALS -- ##
-        self.shutter_main_button.toggled.connect(self._update_shutter_icon)
-        self.shutter_1040_button.toggled.connect(self._update_shutter_icon)
         mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
 
@@ -203,23 +181,6 @@ class _ShutterGroupBox(QGroupBox):
         # hangs, we may need to defer showing the button to the next event-loop tick via
         # QTimer.singleShot(0, self.shutter_1040_button.show)
         self.shutter_1040_button.setVisible(not is_1040_unavailable)
-        colspan = 1 if is_1040_unavailable else 2
-        self._layout.addWidget(
-            self._shutter_icon, 1, 0, 1, colspan, Qt.AlignmentFlag.AlignHCenter
-        )
-
-    def _inactive_laser_pixmap(self) -> QPixmap:
-        color = self.palette().color(QPalette.ColorRole.Mid).name()
-        data = _ICON_INACTIVE_PATH.read_bytes().replace(b"currentColor", color.encode())
-        return _render_svg(data)
-
-    def _update_shutter_icon(self) -> None:
-        if self.shutter_main_button.isChecked():
-            self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
-        elif (btn := self.shutter_1040_button) and btn.isChecked():
-            self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
-        else:
-            self._shutter_icon.setPixmap(self._inactive_laser_pixmap())
 
 
 class _WavelengthGroupBox(QGroupBox):
