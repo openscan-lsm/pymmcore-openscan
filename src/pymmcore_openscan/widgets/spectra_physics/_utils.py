@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QObject, QThread, QTimer, Signal
 from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QPushButton, QWidget
+from qtpy.QtWidgets import QToolButton, QWidget
 
 if TYPE_CHECKING:
     from pymmcore_plus import CMMCorePlus
@@ -15,7 +15,7 @@ _SHUTTER_1040_DEVICE = "Spectra-Physics Insight 1040nm Shutter"
 _POLL_INTERVAL_MS = 500
 
 
-class SafetyButton(QPushButton):
+class SafetyButton(QToolButton):
     """A QPushButton that toggles ON only after being held for a full countdown.
 
     Useful when you want to make sure that the user really intends to toggle the button.
