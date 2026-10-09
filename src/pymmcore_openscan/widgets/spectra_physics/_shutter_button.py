@@ -50,7 +50,8 @@ class ShutterButton(SafetyButton):
 
         self.toggled.connect(self._on_toggled)
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
-        self._mmcore.events.shutterOpenChanged.connect(self._on_property_change)
+        self._mmcore.events.shutterOpenChanged.connect(self._on_shutter_open_change)
+        self._mmcore.events.propertyChanged.connect(self._on_property_change)
         self._try_enable()
 
     def _try_enable(self) -> None:
@@ -61,11 +62,21 @@ class ShutterButton(SafetyButton):
         else:
             self._dev = None
 
-    def _on_property_change(self, device_name: str, open: bool) -> None:
+    def _on_shutter_open_change(self, device_name: str, open: bool) -> None:
         if device_name != self._device_name:
             return
         with signals_blocked(self):
             self.setChecked(open)
+
+    def _on_property_change(
+        self, device_name: str, prop_name: str, prop_val: str
+    ) -> None:
+        if device_name != self._device_name:
+            return
+        if prop_name != "State":
+            return
+        with signals_blocked(self):
+            self.setChecked(bool(prop_val))
 
     def _on_toggled(self, checked: bool) -> None:
         if self.isEnabled() and self._dev:
