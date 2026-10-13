@@ -151,12 +151,12 @@ class _ShutterGroupBox(QGroupBox):
 
         ## -- WIDGETS -- ##
         self.shutter_main_button = ShutterButton(_MAIN_SHUTTER_DEVICE, mmcore=mmcore)
-        self.shutter_main_button.on_text = "Main"
-        self.shutter_main_button.off_text = "Main"
+        self.shutter_main_button.on_text = "Tunable Beam"
+        self.shutter_main_button.off_text = "Tunable Beam"
 
         self.shutter_1040_button = ShutterButton(_SHUTTER_1040_DEVICE, mmcore=mmcore)
-        self.shutter_1040_button.on_text = "1040nm"
-        self.shutter_1040_button.off_text = "1040nm"
+        self.shutter_1040_button.on_text = "1040nm Beam"
+        self.shutter_1040_button.off_text = "1040nm Beam"
 
         ## -- LAYOUT -- ##
         self._layout = QGridLayout(self)
