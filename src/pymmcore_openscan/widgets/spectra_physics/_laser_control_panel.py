@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pymmcore_plus import CMMCorePlus, Device
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QPalette
+from qtpy.QtGui import QFontMetrics, QPalette
 from qtpy.QtWidgets import (
     QFormLayout,
     QGridLayout,
@@ -36,6 +36,34 @@ from ._utils import (
 
 if TYPE_CHECKING:
     from qtpy.QtCore import QPoint
+
+
+class _ScaledLabel(QLabel):
+    """QLabel that downscales its font size to fill the available width."""
+
+    _MAX_POINT_SIZE = 32
+
+    def setText(self, a0: str | None) -> None:
+        super().setText(a0)
+        self._fit_font()
+
+    def resizeEvent(self, a0: object) -> None:
+        super().resizeEvent(a0)
+        self._fit_font()
+
+    def _fit_font(self) -> None:
+        text = self.text()
+        available = self.width()
+        if not text or available <= 0:
+            return
+        font = self.font()
+        font.setPointSize(self._MAX_POINT_SIZE)
+        text_width = QFontMetrics(font).horizontalAdvance(text)
+        if text_width > available:
+            font.setPointSize(
+                max(8, int(self._MAX_POINT_SIZE * available / text_width))
+            )
+        super().setFont(font)
 
 
 class _LaserGroupBox(QGroupBox):
@@ -208,7 +236,12 @@ class _WavelengthGroupBox(QGroupBox):
         self._target.setSuffix(" nm")
         self._target.editingFinished.connect(self._on_target_widget_changed)
 
-        self._actual = QLabel("N/A")
+        self._actual = _ScaledLabel("N/A")
+        self._actual.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # The font scales to the layout - we don't want the layout scaling to the font.
+        self._actual.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
 
         self._presets_group = QGroupBox("Presets")
         self._add_btn = QPushButton("+ Add")
@@ -217,12 +250,12 @@ class _WavelengthGroupBox(QGroupBox):
         ## -- LAYOUT -- ##
         form = QFormLayout()
         form.addRow("Target:", self._target)
-        form.addRow("Actual:", self._actual)
 
         self._presets_layout = QFlowLayout(self._presets_group)
         self._presets_layout.addWidget(self._add_btn)
 
         layout = QVBoxLayout(self)
+        layout.addWidget(self._actual)
         layout.addLayout(form)
         layout.addWidget(self._presets_group)
 
@@ -267,7 +300,7 @@ class _WavelengthGroupBox(QGroupBox):
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == self._ACTUAL_PROP:
-            self._actual.setText(f"{float(value):g} nm")
+            self._actual.setText(f"{float(value):.3f} nm")
 
     def _add_preset(self) -> None:
         wl = self._target.value()
