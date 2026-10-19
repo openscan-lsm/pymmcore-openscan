@@ -5,14 +5,13 @@ from time import time
 
 import pyqtgraph as pg
 from pymmcore_plus import CMMCorePlus
-from qtpy.QtCore import QEvent
+from qtpy.QtCore import QEvent, QPoint, Qt
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
-    QLabel,
+    QMenu,
     QPushButton,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -51,28 +50,20 @@ class LaserPowerGraph(QGroupBox):
         highlight = self.palette().color(QPalette.ColorRole.Highlight)
         self._curve = self._plot.plot(pen=pg.mkPen(highlight, width=2))
 
-        # Controls toolbar
-        self._last_spin = QSpinBox()
-        self._last_spin.setRange(1, 3600)
-        self._last_spin.setValue(10)
-        self._last_spin.setSuffix(" s")
-        self._last_spin.valueChanged.connect(self._on_last_spin_changed)
-
-        fit_btn = QPushButton("Fit All")
-        fit_btn.clicked.connect(self._on_fit_all)
-
-        self._last_btn = QPushButton("Last")
-        self._last_btn.setCheckable(True)
-        self._last_btn.setChecked(True)
-        self._last_btn.toggled.connect(self._on_last_toggled)
+        self._live_interval = 60  # seconds
+        self._live_btn = QPushButton("Live")
+        self._live_btn.setCheckable(True)
+        self._live_btn.setChecked(True)
+        self._live_btn.toggled.connect(self._on_live_toggled)
+        self._live_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._live_btn.customContextMenuRequested.connect(
+            self._on_live_btn_context_menu
+        )
 
         controls = QHBoxLayout()
         controls.setContentsMargins(0, 0, 0, 0)
-        controls.addWidget(fit_btn)
         controls.addStretch()
-        controls.addWidget(QLabel("Last"))
-        controls.addWidget(self._last_spin)
-        controls.addWidget(self._last_btn)
+        controls.addWidget(self._live_btn)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._plot)
@@ -84,30 +75,43 @@ class LaserPowerGraph(QGroupBox):
         self._mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
 
+    def _on_live_btn_context_menu(self, pos: QPoint) -> None:
+        menu = QMenu(self)
+        title = menu.addAction("Show last:")
+        title.setEnabled(False)
+        for label, seconds in [
+            ("10 seconds", 10),
+            ("1 minute", 60),
+            ("10 minutes", 600),
+            ("1 hour", 3600),
+        ]:
+            action = menu.addAction(label)
+            action.setCheckable(True)
+            action.setChecked(self._live_interval == seconds)
+            action.triggered.connect(lambda _, s=seconds: self._set_live_interval(s))
+        menu.exec(self._live_btn.mapToGlobal(pos))
+
+    def _set_live_interval(self, seconds: int) -> None:
+        self._live_interval = seconds
+        self._live_btn.setChecked(True)
+        self._scroll_to_last()
+
     def _scroll_to_last(self) -> None:
-        n = self._last_spin.value()
         self._setting_range = True
-        self._plot.setXRange(time() - n, time(), padding=0)
+        self._plot.setXRange(time() - self._live_interval, time(), padding=0)
         self._setting_range = False
 
-    def _on_fit_all(self) -> None:
-        self._last_btn.setChecked(False)
-        if self._times:
-            self._setting_range = True
-            self._plot.setXRange(min(self._times), max(self._times), padding=0.05)
-            self._setting_range = False
-
-    def _on_last_toggled(self, checked: bool) -> None:
+    def _on_live_toggled(self, checked: bool) -> None:
         if checked:
             self._scroll_to_last()
 
     def _on_last_spin_changed(self) -> None:
-        if self._last_btn.isChecked():
+        if self._live_btn.isChecked():
             self._scroll_to_last()
 
     def _on_manual_range_change(self) -> None:
         if not self._setting_range:
-            self._last_btn.setChecked(False)
+            self._live_btn.setChecked(False)
 
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
@@ -136,5 +140,5 @@ class LaserPowerGraph(QGroupBox):
         self._times.append(time())
         self._powers.append(power)
         self._curve.setData(list(self._times), list(self._powers))
-        if self._last_btn.isChecked():
+        if self._live_btn.isChecked():
             self._scroll_to_last()

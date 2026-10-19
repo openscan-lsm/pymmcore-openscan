@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from pymmcore_plus import CMMCorePlus, Device
-from qtpy.QtCore import QByteArray, QRectF, QSize, Qt
-from qtpy.QtGui import QPainter, QPalette, QPixmap
-from qtpy.QtSvg import QSvgRenderer
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QFontMetrics, QPalette
 from qtpy.QtWidgets import (
     QFormLayout,
     QGridLayout,
@@ -39,25 +37,33 @@ from ._utils import (
 if TYPE_CHECKING:
     from qtpy.QtCore import QPoint
 
-_ASSETS = Path(__file__).parent / "_assets"
-_ICON_ACTIVE_PATH = _ASSETS / "laser-symbol.svg"
-_ICON_INACTIVE_PATH = _ASSETS / "laser-symbol-inactive.svg"
-_ICON_SIZE = QSize(128, 128)
 
+class _ScaledLabel(QLabel):
+    """QLabel that downscales its font size to fill the available width."""
 
-def _render_svg(data: bytes) -> QPixmap:
-    pixmap = QPixmap(_ICON_SIZE)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    renderer = QSvgRenderer(QByteArray(data))
-    scaled = renderer.defaultSize().scaled(
-        _ICON_SIZE, Qt.AspectRatioMode.KeepAspectRatio
-    )
-    x = (_ICON_SIZE.width() - scaled.width()) / 2
-    y = (_ICON_SIZE.height() - scaled.height()) / 2
-    painter = QPainter(pixmap)
-    renderer.render(painter, QRectF(x, y, scaled.width(), scaled.height()))
-    painter.end()
-    return pixmap
+    _MAX_POINT_SIZE = 32
+
+    def setText(self, a0: str | None) -> None:
+        super().setText(a0)
+        self._fit_font()
+
+    def resizeEvent(self, a0: object) -> None:
+        super().resizeEvent(a0)
+        self._fit_font()
+
+    def _fit_font(self) -> None:
+        text = self.text()
+        available = self.width()
+        if not text or available <= 0:
+            return
+        font = self.font()
+        font.setPointSize(self._MAX_POINT_SIZE)
+        text_width = QFontMetrics(font).horizontalAdvance(text)
+        if text_width > available:
+            font.setPointSize(
+                max(8, int(self._MAX_POINT_SIZE * available / text_width))
+            )
+        super().setFont(font)
 
 
 class _LaserGroupBox(QGroupBox):
@@ -98,13 +104,13 @@ class _LaserGroupBox(QGroupBox):
         top_row.addWidget(self.laser_button, stretch=0)
         top_row.addWidget(self._pulsing_indicator, stretch=1)
 
-        laser_form = QFormLayout()
-        laser_form.addRow("State:", self._laser_state)
-        laser_form.addRow("Power:", self._laser_power)
+        self._laser_form = QFormLayout()
+        self._laser_form.addRow("State:", self._laser_state)
+        self._laser_form.addRow("Power:", self._laser_power)
 
         layout = QVBoxLayout(self)
         layout.addLayout(top_row)
-        layout.addLayout(laser_form)
+        layout.addLayout(self._laser_form)
         layout.addWidget(PowerBarWidget(mmcore=mmcore))
 
         ## -- INITIAL STATE -- ##
@@ -146,6 +152,11 @@ class _LaserGroupBox(QGroupBox):
 
     def _try_enable(self) -> None:
         enabled = _DEVICE_NAME in self._mmcore.getLoadedDevices()
+        # The laser state is nice to show if available
+        self._laser_form.setRowVisible(
+            self._laser_state,
+            enabled and self._mmcore.hasProperty(_DEVICE_NAME, self._STATE_PROP),
+        )
         if enabled:
             self._worker.start()
         else:
@@ -168,15 +179,12 @@ class _ShutterGroupBox(QGroupBox):
 
         ## -- WIDGETS -- ##
         self.shutter_main_button = ShutterButton(_MAIN_SHUTTER_DEVICE, mmcore=mmcore)
-        self.shutter_main_button.on_text = "Main"
-        self.shutter_main_button.off_text = "Main"
+        self.shutter_main_button.on_text = "Tunable Beam"
+        self.shutter_main_button.off_text = "Tunable Beam"
 
         self.shutter_1040_button = ShutterButton(_SHUTTER_1040_DEVICE, mmcore=mmcore)
-        self.shutter_1040_button.on_text = "1040nm"
-        self.shutter_1040_button.off_text = "1040nm"
-
-        self._shutter_icon = QLabel()
-        self._shutter_icon.setPixmap(self._inactive_laser_pixmap())
+        self.shutter_1040_button.on_text = "1040nm Beam"
+        self.shutter_1040_button.off_text = "1040nm Beam"
 
         ## -- LAYOUT -- ##
         self._layout = QGridLayout(self)
@@ -188,8 +196,6 @@ class _ShutterGroupBox(QGroupBox):
         )
 
         ## -- SIGNALS -- ##
-        self.shutter_main_button.toggled.connect(self._update_shutter_icon)
-        self.shutter_1040_button.toggled.connect(self._update_shutter_icon)
         mmcore.events.systemConfigurationLoaded.connect(self._try_enable)
         self._try_enable()
 
@@ -203,23 +209,6 @@ class _ShutterGroupBox(QGroupBox):
         # hangs, we may need to defer showing the button to the next event-loop tick via
         # QTimer.singleShot(0, self.shutter_1040_button.show)
         self.shutter_1040_button.setVisible(not is_1040_unavailable)
-        colspan = 1 if is_1040_unavailable else 2
-        self._layout.addWidget(
-            self._shutter_icon, 1, 0, 1, colspan, Qt.AlignmentFlag.AlignHCenter
-        )
-
-    def _inactive_laser_pixmap(self) -> QPixmap:
-        color = self.palette().color(QPalette.ColorRole.Mid).name()
-        data = _ICON_INACTIVE_PATH.read_bytes().replace(b"currentColor", color.encode())
-        return _render_svg(data)
-
-    def _update_shutter_icon(self) -> None:
-        if self.shutter_main_button.isChecked():
-            self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
-        elif (btn := self.shutter_1040_button) and btn.isChecked():
-            self._shutter_icon.setPixmap(_render_svg(_ICON_ACTIVE_PATH.read_bytes()))
-        else:
-            self._shutter_icon.setPixmap(self._inactive_laser_pixmap())
 
 
 class _WavelengthGroupBox(QGroupBox):
@@ -247,7 +236,12 @@ class _WavelengthGroupBox(QGroupBox):
         self._target.setSuffix(" nm")
         self._target.editingFinished.connect(self._on_target_widget_changed)
 
-        self._actual = QLabel("N/A")
+        self._actual = _ScaledLabel("N/A")
+        self._actual.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # The font scales to the layout - we don't want the layout scaling to the font.
+        self._actual.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
 
         self._presets_group = QGroupBox("Presets")
         self._add_btn = QPushButton("+ Add")
@@ -256,12 +250,12 @@ class _WavelengthGroupBox(QGroupBox):
         ## -- LAYOUT -- ##
         form = QFormLayout()
         form.addRow("Target:", self._target)
-        form.addRow("Actual:", self._actual)
 
         self._presets_layout = QFlowLayout(self._presets_group)
         self._presets_layout.addWidget(self._add_btn)
 
         layout = QVBoxLayout(self)
+        layout.addWidget(self._actual)
         layout.addLayout(form)
         layout.addWidget(self._presets_group)
 
@@ -306,7 +300,7 @@ class _WavelengthGroupBox(QGroupBox):
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == self._ACTUAL_PROP:
-            self._actual.setText(f"{float(value):g} nm")
+            self._actual.setText(f"{float(value):.3f} nm")
 
     def _add_preset(self) -> None:
         wl = self._target.value()

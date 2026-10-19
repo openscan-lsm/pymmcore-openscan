@@ -4,18 +4,18 @@ from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QObject, QThread, QTimer, Signal
 from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QPushButton, QWidget
+from qtpy.QtWidgets import QToolButton, QWidget
 
 if TYPE_CHECKING:
     from pymmcore_plus import CMMCorePlus
 
-_DEVICE_NAME = "InsightDS+"
-_MAIN_SHUTTER_DEVICE = "InsightDS+ Main"
-_SHUTTER_1040_DEVICE = "InsightDS+ 1040nm"
+_DEVICE_NAME = "Spectra-Physics Laser"
+_MAIN_SHUTTER_DEVICE = "Spectra-Physics Main Shutter"
+_SHUTTER_1040_DEVICE = "Spectra-Physics Insight 1040nm Shutter"
 _POLL_INTERVAL_MS = 500
 
 
-class SafetyButton(QPushButton):
+class SafetyButton(QToolButton):
     """A QPushButton that toggles ON only after being held for a full countdown.
 
     Useful when you want to make sure that the user really intends to toggle the button.
@@ -221,5 +221,6 @@ class _PollingWorker(QObject):
 
     def _poll(self) -> None:
         for device, prop in self._props:
-            value = str(self._mmcore.getProperty(device, prop))
-            self.updated.emit(device, prop, value)
+            if self._mmcore.hasProperty(device, prop):
+                value = str(self._mmcore.getProperty(device, prop))
+                self.updated.emit(device, prop, value)
