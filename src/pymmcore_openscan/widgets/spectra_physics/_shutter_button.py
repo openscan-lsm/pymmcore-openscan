@@ -76,7 +76,7 @@ class ShutterButton(SafetyButton):
         if prop_name != "State":
             return
         with signals_blocked(self):
-            self.setChecked(bool(prop_val))
+            self.setChecked(prop_val == "1")
 
     def _on_toggled(self, checked: bool) -> None:
         if self.isEnabled() and self._dev:
