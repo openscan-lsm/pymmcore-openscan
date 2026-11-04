@@ -300,7 +300,7 @@ class _WavelengthGroupBox(QGroupBox):
 
     def _on_updated(self, _: str, prop: str, value: str) -> None:
         if prop == self._ACTUAL_PROP:
-            self._actual.setText(f"{float(value):.3f} nm")
+            self._actual.setText(f"{round(float(value))} nm")
 
     def _add_preset(self) -> None:
         wl = self._target.value()
