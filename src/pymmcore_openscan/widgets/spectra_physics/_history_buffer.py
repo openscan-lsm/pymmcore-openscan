@@ -89,15 +89,14 @@ class HistoryBufferPanel(QWidget):
         self._refresh_btn = QPushButton("Refresh")
 
         ## -- LAYOUT -- ##
-        bottom_wdg = QWidget()
-        bottom_row = QHBoxLayout(bottom_wdg)
+        bottom_row = QHBoxLayout()
         bottom_row.addWidget(self._last_read_label)
         bottom_row.addStretch()
         bottom_row.addWidget(self._refresh_btn)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._table)
-        layout.addWidget(bottom_wdg)
+        layout.addLayout(bottom_row)
 
         ## -- SETUP -- ##
         self._refresh_btn.clicked.connect(self._refresh)
