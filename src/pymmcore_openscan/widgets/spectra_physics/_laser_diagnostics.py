@@ -76,11 +76,11 @@ class LaserDiagnosticsPanel(QGroupBox):
         tabs.addTab(self._laser_power, "Laser Power")
         tabs.addTab(self._history, "Status Code Buffer")
 
-        left_col = QVBoxLayout(self)
-        left_col.addLayout(form)
-        left_col.addWidget(self._diodes)
-        left_col.addWidget(tabs)
-        left_col.addStretch()
+        layout = QVBoxLayout(self)
+        layout.addLayout(form)
+        layout.addWidget(self._diodes)
+        layout.addWidget(tabs)
+        layout.addStretch()
 
         ## -- POLLING -- ##
         self._worker = _PollingWorker(self._mmcore, _PROPS)
