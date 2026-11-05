@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QProgressBar,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -71,18 +72,15 @@ class LaserDiagnosticsPanel(QGroupBox):
         form.addRow("System Warmup:", self._warmup)
         form.addRow("Humidity:", humidity_row)
 
-        left_col = QVBoxLayout()
-        left_col.addLayout(form)
-        left_col.addWidget(self._diodes)
-        left_col.addWidget(self._laser_power)
-        left_col.addStretch()
-
-        columns = QHBoxLayout()
-        columns.addLayout(left_col, stretch=2)
-        columns.addWidget(self._history, stretch=1)
+        tabs = QTabWidget()
+        tabs.addTab(self._laser_power, "Laser Power")
+        tabs.addTab(self._history, "Status Code Buffer")
 
         layout = QVBoxLayout(self)
-        layout.addLayout(columns)
+        layout.addLayout(form)
+        layout.addWidget(self._diodes)
+        layout.addWidget(tabs)
+        layout.addStretch()
 
         ## -- POLLING -- ##
         self._worker = _PollingWorker(self._mmcore, _PROPS)

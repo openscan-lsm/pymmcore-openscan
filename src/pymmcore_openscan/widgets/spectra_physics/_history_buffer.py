@@ -7,7 +7,6 @@ from pymmcore_plus import CMMCorePlus
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
-    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -58,10 +57,8 @@ _HISTORY_CODES: dict[int, tuple[CodeType, str]] = {
     483: (CodeType.FAULT, "Low FTO power"),
 }
 
-_EMPTY_CODE = "000"
 
-
-class HistoryBufferPanel(QGroupBox):
+class HistoryBufferPanel(QWidget):
     """Formatted view of the laser history buffer (16 slots, most recent first)."""
 
     def __init__(
@@ -69,7 +66,7 @@ class HistoryBufferPanel(QGroupBox):
         parent: QWidget | None = None,
         mmcore: CMMCorePlus | None = None,
     ) -> None:
-        super().__init__("History Buffer", parent)
+        super().__init__(parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
         self.setToolTip("The last 16 status codes from the laser, most recent first.")
 

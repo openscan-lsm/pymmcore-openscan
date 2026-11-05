@@ -8,7 +8,6 @@ from pymmcore_plus import CMMCorePlus
 from qtpy.QtCore import QEvent, QPoint, Qt
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import (
-    QGroupBox,
     QHBoxLayout,
     QMenu,
     QPushButton,
@@ -21,7 +20,7 @@ from ._utils import _DEVICE_NAME, _PollingWorker
 _POWER_PROP = "Laser Power (W)"
 
 
-class LaserPowerGraph(QGroupBox):
+class LaserPowerGraph(QWidget):
     """Time-series of laser output power."""
 
     def __init__(
@@ -29,7 +28,7 @@ class LaserPowerGraph(QGroupBox):
         parent: QWidget | None = None,
         mmcore: CMMCorePlus | None = None,
     ) -> None:
-        super().__init__("Laser Power", parent)
+        super().__init__(parent)
         self._mmcore = mmcore or CMMCorePlus.instance()
 
         # TODO: We will likely want to be able to track power over longer time intervals
