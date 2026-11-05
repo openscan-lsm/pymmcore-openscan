@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QObject, QThread, QTimer, Signal
-from qtpy.QtGui import QIcon
+from qtpy.QtGui import QFontMetrics, QIcon
 from qtpy.QtWidgets import QToolButton, QWidget
 
 if TYPE_CHECKING:
@@ -37,6 +37,8 @@ class SafetyButton(QToolButton):
         countdown_seconds: int = 3,
     ) -> None:
         super().__init__(parent)
+        self._on_off_font = self.font()
+        self._counting_font = self.font()
         self._state = self._OFF
         self._source_state = self._OFF
         self._remaining = 0
@@ -146,6 +148,29 @@ class SafetyButton(QToolButton):
             self._state = self._ON if self._source_state == self._OFF else self._OFF
         self._refresh()
 
+    def resizeEvent(self, a0: object) -> None:
+        super().resizeEvent(a0)
+        self._recompute_counting_font()
+        self._apply_font()
+
+    def _recompute_counting_font(self) -> None:
+        rect = self.contentsRect()
+        available_h = max(1, rect.height())
+        available_w = max(1, rect.width())
+        # Use available_h as a generous starting point for measurement
+        self._counting_font.setPointSize(available_h)
+        fm = QFontMetrics(self._counting_font)
+        # Take the most restrictive of the height and width constraints
+        max_advance = fm.horizontalAdvance("8")
+        scale = min(available_h / fm.height(), available_w / max_advance)
+        # Apply the scale factor once, with a minimum readable size
+        self._counting_font.setPointSize(max(8, int(available_h * scale)))
+
+    def _apply_font(self) -> None:
+        self.setFont(
+            self._counting_font if self._state == self._COUNTING else self._on_off_font
+        )
+
     def _refresh(self) -> None:
         super().setChecked(self._state == self._ON)
         text = {
@@ -154,6 +179,7 @@ class SafetyButton(QToolButton):
             self._COUNTING: str(self._remaining),
         }
         self.setText(text[self._state])
+        self._apply_font()
         icon = {
             self._ON: self.on_icon,
             self._OFF: self.off_icon,
